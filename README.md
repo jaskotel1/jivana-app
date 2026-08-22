@@ -1,5 +1,11 @@
 # jivana-app
 
+## Documentation
+
+- [Architecture overview](docs/architecture/overview.md)
+- [Development setup](docs/development/setup.md)
+- [Architecture Decision Records](docs/decisions/README.md)
+
 ## Code quality
 
 Run all code quality checks:
