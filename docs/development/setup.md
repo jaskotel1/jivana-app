@@ -35,6 +35,7 @@ is the default choice for day-to-day development.
 ```shell
 ./gradlew qualityCheck
 ./gradlew testDevDebugUnitTest
+./gradlew testProdDebugUnitTest
 ./gradlew assembleDevDebug
 ```
 
