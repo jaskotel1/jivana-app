@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "569767351104",
+    "project_id": "jivana-24b2a",
+    "storage_bucket": "jivana-24b2a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569767351104:android:078a51b240b8eaea0560a5",
+        "android_client_info": {
+          "package_name": "com.uniccomj.jivana"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDICn7YaVfkLd1gCyfBijdszA9OyCtpm5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569767351104:android:9f1267b53d43163b0560a5",
+        "android_client_info": {
+          "package_name": "com.uniccomj.jivana.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDICn7YaVfkLd1gCyfBijdszA9OyCtpm5k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
