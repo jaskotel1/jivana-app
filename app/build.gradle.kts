@@ -2,14 +2,17 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.detekt)
 }
 
 android {
     namespace = "com.uniccomj.jivana"
     compileSdk {
-        version = release(37) {
-            minorApiLevel = 0
-        }
+        version =
+            release(37) {
+                minorApiLevel = 0
+            }
     }
 
     defaultConfig {
@@ -48,6 +51,23 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+ktlint {
+    version.set(libs.versions.ktlint.get())
+    android.set(true)
+    ignoreFailures.set(false)
+    filter {
+        exclude("**/build/**")
+        exclude("**/generated/**")
+    }
+}
+
+detekt {
+    toolVersion = libs.versions.detekt.get()
+    buildUponDefaultConfig = true
+    parallel = true
+    config.setFrom(rootProject.files("config/detekt/detekt.yml"))
 }
 
 dependencies {
