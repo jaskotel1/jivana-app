@@ -7,7 +7,9 @@ the application grows.
 ## Layers
 
 - `core` contains shared elements that are not owned by a specific feature.
-  The current Compose theme is located under `core/ui`.
+  The application uses one shared Material 3 theme located under
+  `core/ui/theme`. It defines the fixed application color scheme, typography,
+  and shapes used by all Compose UI.
 - `data` is the place for data sources, mapping, and implementations of
   repository contracts. Room dependencies are configured, but no database,
   entities, DAOs, or repositories have been implemented yet.
