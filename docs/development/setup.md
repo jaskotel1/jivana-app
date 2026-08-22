@@ -52,3 +52,9 @@ Run the DEV debug instrumentation tests with:
 ./gradlew connectedDevDebugAndroidTest
 ```
 
+## Languages
+
+The application currently supports English and Polish. The default English
+resources are in `app/src/main/res/values`, and Polish translations are in
+`app/src/main/res/values-pl`.
+

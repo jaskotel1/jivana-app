@@ -51,6 +51,10 @@ android {
     buildFeatures {
         compose = true
     }
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters += listOf("en", "pl")
+    }
     testOptions {
         unitTests.all {
             it.useJUnitPlatform()
