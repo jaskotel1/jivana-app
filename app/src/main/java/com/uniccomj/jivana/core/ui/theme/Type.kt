@@ -1,4 +1,4 @@
-package com.uniccomj.jivana.ui.theme
+package com.uniccomj.jivana.core.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
@@ -30,5 +30,5 @@ val Typography = Typography(
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp
     )
-    */
+     */
 )

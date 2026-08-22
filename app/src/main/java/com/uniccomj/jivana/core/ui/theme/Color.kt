@@ -1,4 +1,4 @@
-package com.uniccomj.jivana.ui.theme
+package com.uniccomj.jivana.core.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
