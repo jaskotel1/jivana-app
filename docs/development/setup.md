@@ -58,10 +58,10 @@ The application currently supports English and Polish. The default English
 resources are in `app/src/main/res/values`, and Polish translations are in
 `app/src/main/res/values-pl`.
 
-## Firebase Analytics
+## Firebase Analytics and Crashlytics
 
-Firebase Analytics uses separate Firebase Android app configurations for each
-environment flavor:
+The application uses Firebase Analytics and Firebase Crashlytics. Both services
+use separate Firebase Android app configurations for each environment flavor:
 
 - DEV: package ID `com.uniccomj.jivana.dev`, configured by
   `app/src/dev/google-services.json`.
@@ -72,4 +72,8 @@ Download each configuration file from its matching Android app in Firebase
 Console. Both files are required for Gradle to build their respective flavors.
 They contain client configuration and must never be replaced by Firebase Admin
 SDK credentials or service account keys.
+
+Firebase and Crashlytics use their standard automatic initialization. No user
+identifiers, health data, or other personal data should be attached to
+Crashlytics reports.
 
