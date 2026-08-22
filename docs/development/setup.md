@@ -41,3 +41,14 @@ is the default choice for day-to-day development.
 
 See the root [README](../../README.md) for CI and branch workflow information.
 
+## Compose UI tests
+
+Compose UI tests are located in `app/src/androidTest` and use JUnit 4 with
+AndroidX Test. They require a connected Android device or running emulator.
+
+Run the DEV debug instrumentation tests with:
+
+```shell
+./gradlew connectedDevDebugAndroidTest
+```
+
