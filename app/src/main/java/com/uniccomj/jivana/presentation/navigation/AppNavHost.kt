@@ -10,6 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.uniccomj.jivana.R
+import com.uniccomj.jivana.presentation.home.HomeScreen
 
 @Composable
 fun AppNavHost(
@@ -23,7 +24,7 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(AppDestination.Home.route) {
-            DestinationPlaceholder(titleRes = R.string.home_title)
+            HomeScreen()
         }
         composable(AppDestination.Habits.route) {
             DestinationPlaceholder(titleRes = R.string.habits_title)
