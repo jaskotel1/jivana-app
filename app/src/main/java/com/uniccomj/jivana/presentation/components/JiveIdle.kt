@@ -7,6 +7,7 @@ import android.graphics.drawable.AnimatedImageDrawable
 import android.graphics.drawable.Drawable
 import android.os.Build
 import android.widget.ImageView
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
@@ -20,17 +21,25 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
+import com.uniccomj.jivana.domain.model.JiveCondition
+import com.uniccomj.jivana.presentation.avatar.JiveAnimationPlayback
+import com.uniccomj.jivana.presentation.avatar.JiveAnimationResolver
 
 private const val JiveAspectRatio = 1f
 
 @Composable
-fun JiveIdle(modifier: Modifier = Modifier, contentDescription: String? = null) {
+fun JiveMascot(
+    condition: JiveCondition,
+    modifier: Modifier = Modifier,
+    contentDescription: String? = null
+) {
+    val resolver = remember { JiveAnimationResolver() }
+    val animation = resolver.resolve(condition)
     val sizedModifier = modifier.aspectRatio(JiveAspectRatio)
     if (LocalInspectionMode.current) {
         Image(
-            painter = painterResource(R.drawable.jive_idle),
+            painter = painterResource(animation.drawableRes),
             contentDescription = contentDescription,
             modifier = sizedModifier,
             contentScale = ContentScale.Fit
@@ -40,39 +49,51 @@ fun JiveIdle(modifier: Modifier = Modifier, contentDescription: String? = null) 
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    val drawable = remember(context, configuration) {
-        loadJiveDrawable(context)
+    val drawable = remember(context, configuration, animation.drawableRes) {
+        loadJiveDrawable(context, animation.drawableRes)
     }
     AndroidView(
         factory = { viewContext ->
             LifecycleAwareImageView(viewContext).apply {
                 scaleType = ImageView.ScaleType.FIT_CENTER
                 adjustViewBounds = true
-                setJiveDrawable(drawable)
+                setJiveDrawable(drawable, animation.playback)
                 updateAccessibility(contentDescription)
             }
         },
         modifier = sizedModifier,
         update = { imageView ->
-            imageView.setJiveDrawable(drawable)
+            imageView.setJiveDrawable(drawable, animation.playback)
             imageView.updateAccessibility(contentDescription)
         }
     )
 }
 
-private fun loadJiveDrawable(context: Context): Drawable? =
+@Composable
+fun JiveIdle(modifier: Modifier = Modifier, contentDescription: String? = null) {
+    JiveMascot(
+        condition = JiveCondition(),
+        modifier = modifier,
+        contentDescription = contentDescription
+    )
+}
+
+private fun loadJiveDrawable(context: Context, @DrawableRes drawableRes: Int): Drawable? =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         ImageDecoder.decodeDrawable(
-            ImageDecoder.createSource(context.resources, R.drawable.jive_idle)
+            ImageDecoder.createSource(context.resources, drawableRes)
         )
     } else {
-        ContextCompat.getDrawable(context, R.drawable.jive_idle)
+        ContextCompat.getDrawable(context, drawableRes)
     }
 
 private class LifecycleAwareImageView(context: Context) : ImageView(context) {
-    fun setJiveDrawable(newDrawable: Drawable?) {
-        if (drawable === newDrawable) return
+    private var playback = JiveAnimationPlayback.LOOP
+
+    fun setJiveDrawable(newDrawable: Drawable?, newPlayback: JiveAnimationPlayback) {
+        if (drawable === newDrawable && playback == newPlayback) return
         stopAnimation()
+        playback = newPlayback
         setImageDrawable(newDrawable)
         startAnimationIfVisible()
     }
@@ -109,7 +130,10 @@ private class LifecycleAwareImageView(context: Context) : ImageView(context) {
         if (!isAttachedToWindow || windowVisibility != VISIBLE) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             (drawable as? AnimatedImageDrawable)?.repeatCount =
-                AnimatedImageDrawable.REPEAT_INFINITE
+                when (playback) {
+                    JiveAnimationPlayback.LOOP -> AnimatedImageDrawable.REPEAT_INFINITE
+                    JiveAnimationPlayback.ONE_SHOT -> 0
+                }
         }
         (drawable as? Animatable)?.start()
     }
@@ -123,6 +147,6 @@ private class LifecycleAwareImageView(context: Context) : ImageView(context) {
 @Composable
 private fun JiveIdlePreview() {
     JivanaTheme {
-        JiveIdle()
+        JiveMascot(condition = JiveCondition())
     }
 }

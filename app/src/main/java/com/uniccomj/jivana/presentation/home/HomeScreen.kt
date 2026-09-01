@@ -16,12 +16,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
-import com.uniccomj.jivana.presentation.components.JiveIdle
+import com.uniccomj.jivana.domain.model.JiveCondition
+import com.uniccomj.jivana.presentation.components.JiveMascot
 
 private const val JiveWidthFraction = 0.72f
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(condition: JiveCondition, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -29,7 +30,8 @@ fun HomeScreen(modifier: Modifier = Modifier) {
     ) {
         Text(text = stringResource(R.string.home_title))
         Spacer(modifier = Modifier.height(24.dp))
-        JiveIdle(
+        JiveMascot(
+            condition = condition,
             modifier = Modifier
                 .fillMaxWidth(JiveWidthFraction)
                 .widthIn(max = 280.dp)
@@ -41,6 +43,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreenPreview() {
     JivanaTheme {
-        HomeScreen()
+        HomeScreen(condition = JiveCondition())
     }
 }
