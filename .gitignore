@@ -13,3 +13,7 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase administrative credentials (never commit)
+**/service-account.json
+**/firebase-adminsdk*.json
