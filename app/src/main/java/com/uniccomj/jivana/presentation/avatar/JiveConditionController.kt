@@ -1,12 +1,15 @@
 package com.uniccomj.jivana.presentation.avatar
 
 import com.uniccomj.jivana.domain.model.JiveCondition
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class JiveConditionController(initialCondition: JiveCondition = JiveCondition()) {
-    private val mutableCondition = MutableStateFlow(initialCondition)
+@Singleton
+class JiveConditionController @Inject constructor() {
+    private val mutableCondition = MutableStateFlow(JiveCondition())
 
     val condition: StateFlow<JiveCondition> = mutableCondition.asStateFlow()
 
