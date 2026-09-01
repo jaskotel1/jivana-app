@@ -23,14 +23,14 @@ import androidx.core.content.ContextCompat
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 
-private const val JiveAspectRatio = 365f / 626f
+private const val JiveAspectRatio = 1f
 
 @Composable
 fun JiveIdle(modifier: Modifier = Modifier, contentDescription: String? = null) {
     val sizedModifier = modifier.aspectRatio(JiveAspectRatio)
     if (LocalInspectionMode.current) {
         Image(
-            painter = painterResource(R.drawable.jive_idle_v1),
+            painter = painterResource(R.drawable.jive_idle),
             contentDescription = contentDescription,
             modifier = sizedModifier,
             contentScale = ContentScale.Fit
@@ -63,10 +63,10 @@ fun JiveIdle(modifier: Modifier = Modifier, contentDescription: String? = null) 
 private fun loadJiveDrawable(context: Context): Drawable? =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         ImageDecoder.decodeDrawable(
-            ImageDecoder.createSource(context.resources, R.drawable.jive_idle_v1)
+            ImageDecoder.createSource(context.resources, R.drawable.jive_idle)
         )
     } else {
-        ContextCompat.getDrawable(context, R.drawable.jive_idle_v1)
+        ContextCompat.getDrawable(context, R.drawable.jive_idle)
     }
 
 private class LifecycleAwareImageView(context: Context) : ImageView(context) {
