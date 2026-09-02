@@ -8,6 +8,7 @@ import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
+import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -28,7 +29,7 @@ class RoomHabitHistoryRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, JivanaDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = RoomHabitHistoryRepository(database.habitHistoryDao())
+        repository = RoomHabitHistoryRepository(database.habitHistoryDao(), JiveScoringConfig())
     }
 
     @After
@@ -109,16 +110,15 @@ class RoomHabitHistoryRepositoryTest {
     }
 
     @Test
-    fun unscheduledDayInsideHistoryHasNullCompletionRateAndIsNeutral() = runTest {
+    fun unscheduledDayInsideHistoryIsNotMaterialized() = runTest {
         scheduleHabits(count = 4, date = StartDate)
         scheduleHabits(count = 2, date = StartDate.plusDays(2))
 
         val history = repository.observeDailyPerformance(StartDate.plusDays(2)).first()
 
-        assertEquals(3, history.size)
+        assertEquals(2, history.size)
         assertEquals(4, history[0].plannedHabitCount)
-        assertEquals(null, history[1].completionRate)
-        assertEquals(2, history[2].plannedHabitCount)
+        assertEquals(2, history[1].plannedHabitCount)
     }
 
     @Test
@@ -154,6 +154,57 @@ class RoomHabitHistoryRepositoryTest {
         assertEquals(JiveSleepiness.SLEEPING, JiveConditionScorer().score(history).sleepiness)
     }
 
+    @Test
+    fun longPerfectHistoryIsBoundedInRoomAndScoresLikeFullHistory() = runTest {
+        val dates = List(365) { StartDate.plusDays(it.toLong()) }
+        repository.scheduleHabit("habit", dates.toSet())
+        dates.forEach { date -> repository.setHabitCompleted("habit", date, completed = true) }
+
+        val optimized = repository.observeDailyPerformance(dates.last()).first()
+        val full = dates.map { date -> performance(date, completionPercent = 100) }
+
+        assertEquals(JiveScoringConfig().energyFullRecoveryDays, optimized.size)
+        assertEquals(JiveConditionScorer().score(full), JiveConditionScorer().score(optimized))
+    }
+
+    @Test
+    fun longInactiveHistoryIsBoundedWithoutLosingSleepingState() = runTest {
+        val dates = List(365) { StartDate.plusDays(it.toLong()) }
+        repository.scheduleHabit("habit", dates.toSet())
+
+        val optimized = repository.observeDailyPerformance(dates.last()).first()
+        val full = dates.map { date ->
+            performance(date, completionPercent = 0, activityRecorded = false)
+        }
+
+        assertEquals(JiveScoringConfig().sleepingAfterInactiveDays, optimized.size)
+        assertEquals(JiveConditionScorer().score(full), JiveConditionScorer().score(optimized))
+    }
+
+    @Test
+    fun consciousZeroPercentHistoryIsNotIncorrectlyBoundedForSleepiness() = runTest {
+        val dates = List(90) { StartDate.plusDays(it.toLong()) }
+        repository.scheduleHabit("habit", dates.toSet())
+        dates.forEach { date -> repository.recordDailyCheckIn(date) }
+
+        val optimized = repository.observeDailyPerformance(dates.last()).first()
+
+        assertEquals(90, optimized.size)
+        assertEquals(JiveSleepiness.VERY_SLEEPY, JiveConditionScorer().score(optimized).sleepiness)
+    }
+
+    @Test
+    fun weeklyScheduleUsesScoringDaysRatherThanCalendarWindow() = runTest {
+        val dates = List(53) { StartDate.plusWeeks(it.toLong()) }
+        repository.scheduleHabit("habit", dates.toSet())
+        dates.forEach { date -> repository.setHabitCompleted("habit", date, completed = true) }
+
+        val optimized = repository.observeDailyPerformance(dates.last()).first()
+
+        assertEquals(JiveScoringConfig().energyFullRecoveryDays, optimized.size)
+        assertEquals(dates.takeLast(15).first(), optimized.first().date)
+    }
+
     private suspend fun createFourteenDayHistory(
         activityRecorded: Boolean
     ): List<DailyHabitPerformance> {
@@ -170,6 +221,17 @@ class RoomHabitHistoryRepositoryTest {
             repository.scheduleHabit("habit-$index", setOf(date))
         }
     }
+
+    private fun performance(
+        date: LocalDate,
+        completionPercent: Int,
+        activityRecorded: Boolean = true
+    ) = DailyHabitPerformance(
+        date = date,
+        plannedHabitCount = 100,
+        completedHabitCount = completionPercent,
+        activityRecorded = activityRecorded
+    )
 
     private companion object {
         val StartDate: LocalDate = LocalDate.of(2026, 1, 1)

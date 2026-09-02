@@ -2,6 +2,7 @@ package com.uniccomj.jivana.di
 
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
+import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import com.uniccomj.jivana.domain.usecase.ObserveJiveConditionUseCase
 import dagger.Module
 import dagger.Provides
@@ -13,7 +14,11 @@ import java.time.Clock
 @InstallIn(SingletonComponent::class)
 object JiveModule {
     @Provides
-    fun provideJiveConditionScorer(): JiveConditionScorer = JiveConditionScorer()
+    fun provideJiveScoringConfig(): JiveScoringConfig = JiveScoringConfig()
+
+    @Provides
+    fun provideJiveConditionScorer(config: JiveScoringConfig): JiveConditionScorer =
+        JiveConditionScorer(config)
 
     @Provides
     fun provideObserveJiveConditionUseCase(

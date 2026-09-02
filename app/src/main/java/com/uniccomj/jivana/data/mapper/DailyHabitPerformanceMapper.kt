@@ -10,27 +10,3 @@ fun DailyHabitPerformanceRow.toDomain(): DailyHabitPerformance = DailyHabitPerfo
     completedHabitCount = completedHabitCount,
     activityRecorded = activityRecorded
 )
-
-fun List<DailyHabitPerformanceRow>.toDomainHistory(
-    throughDate: LocalDate
-): List<DailyHabitPerformance> {
-    if (isEmpty()) return emptyList()
-
-    val rowsByDate = associateBy { row -> LocalDate.ofEpochDay(row.dateEpochDay) }
-    val firstDate = requireNotNull(rowsByDate.keys.minOrNull())
-
-    return buildList {
-        var date = firstDate
-        while (!date.isAfter(throughDate)) {
-            add(
-                rowsByDate[date]?.toDomain() ?: DailyHabitPerformance(
-                    date = date,
-                    plannedHabitCount = 0,
-                    completedHabitCount = 0,
-                    activityRecorded = false
-                )
-            )
-            date = date.plusDays(1)
-        }
-    }
-}

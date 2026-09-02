@@ -72,6 +72,15 @@ class JiveSleepinessScoringTest {
         )
     }
 
+    @Test
+    fun `inactivity during recovery makes Jive sleep again`() {
+        val history = days(14, activityRecorded = false) +
+            days(8, 100, true, startIndex = 14) +
+            days(14, activityRecorded = false, startIndex = 22)
+
+        assertEquals(JiveSleepiness.SLEEPING, scorer.score(history).sleepiness)
+    }
+
     private fun days(
         count: Int,
         completionPercent: Int = 0,
