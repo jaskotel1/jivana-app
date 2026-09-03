@@ -1,5 +1,8 @@
 package com.uniccomj.jivana.domain.usecase
 
+import com.uniccomj.jivana.domain.model.JiveEnergy
+import com.uniccomj.jivana.domain.model.JiveSleepiness
+
 data class JiveScoringConfig(
     val moodRollingWindowDays: Int = 5,
     val ecstaticThreshold: Double = 0.90,
@@ -21,6 +24,12 @@ data class JiveScoringConfig(
     val sleepingAfterInactiveDays: Int = 14,
     val sleepinessRecoveryDaysPerLevel: Int = 4
 ) {
+    val energyFullRecoveryDays: Int
+        get() = energyRecoveryDaysPerLevel * (JiveEnergy.entries.size - 1)
+
+    val sleepinessFullRecoveryDays: Int
+        get() = sleepinessRecoveryDaysPerLevel * (JiveSleepiness.entries.size - 1)
+
     init {
         require(moodRollingWindowDays > 0)
         requireThresholdsAreDescending()

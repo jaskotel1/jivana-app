@@ -51,6 +51,15 @@ class JiveEnergyScoringTest {
         )
     }
 
+    @Test
+    fun `weak days during recovery worsen energy again`() {
+        val history = days(14, 0) +
+            days(10, 100, startIndex = 14) +
+            days(7, 0, startIndex = 24)
+
+        assertEquals(JiveEnergy.VERY_TIRED, scorer.score(history).energy)
+    }
+
     private fun assertEnergy(expected: JiveEnergy, weakDays: Int) {
         assertEquals(expected, scorer.score(days(weakDays, 0)).energy)
     }
