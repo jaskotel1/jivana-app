@@ -1,3 +1,16 @@
 <resources>
     <string name="app_name" translatable="false">Jivana DEV</string>
+    <string name="jive_playground_title" translatable="false">Jive Playground</string>
+    <string name="jive_playground_subtitle">Jive 2.0 · movement and wardrobe</string>
+    <string name="jive_playground_back">Back</string>
+    <string name="jive_playground_character">Animated Jive 2.0 character</string>
+    <string name="jive_playground_animation">Animation</string>
+    <string name="jive_playground_outfit">Outfit</string>
+    <string name="jive_animation_idle">Idle</string>
+    <string name="jive_animation_happy">Happy</string>
+    <string name="jive_animation_walking">Walking</string>
+    <string name="jive_animation_sad">Sad</string>
+    <string name="jive_outfit_default">Default</string>
+    <string name="jive_outfit_hoodie">Hoodie</string>
+    <string name="jive_outfit_sport">Sport</string>
 </resources>

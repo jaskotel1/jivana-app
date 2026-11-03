@@ -4,6 +4,8 @@
 
 - [Architecture overview](docs/architecture/overview.md)
 - [Development setup](docs/development/setup.md)
+- [Jive Canvas and DEV Playground](docs/development/jive-playground.md)
+- [Legacy Jive cleanup report](docs/development/jive-cleanup.md)
 - [Architecture Decision Records](docs/decisions/README.md)
 
 ## Code quality

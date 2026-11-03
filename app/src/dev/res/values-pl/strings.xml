@@ -1,0 +1,14 @@
+<resources>
+    <string name="jive_playground_subtitle">Jive 2.0 · ruch i garderoba</string>
+    <string name="jive_playground_back">Wstecz</string>
+    <string name="jive_playground_character">Animowana postać Jive 2.0</string>
+    <string name="jive_playground_animation">Animacja</string>
+    <string name="jive_playground_outfit">Strój</string>
+    <string name="jive_animation_idle">Spoczynek</string>
+    <string name="jive_animation_happy">Radość</string>
+    <string name="jive_animation_walking">Chód</string>
+    <string name="jive_animation_sad">Smutek</string>
+    <string name="jive_outfit_default">Podstawowy</string>
+    <string name="jive_outfit_hoodie">Bluza</string>
+    <string name="jive_outfit_sport">Sportowy</string>
+</resources>
