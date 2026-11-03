@@ -43,13 +43,17 @@ See the root [README](../../README.md) for CI and branch workflow information.
 
 ## Compose UI tests
 
-Compose UI tests are located in `app/src/androidTest` and use JUnit 4 with
-AndroidX Test. They require a connected Android device or running emulator.
+Shared Compose UI tests are located in `app/src/androidTest`; DEV Playground
+tests use `app/src/androidTestDev`, and PROD navigation tests use
+`app/src/androidTestProd`. They use JUnit 4 with AndroidX Test and require a
+connected Android device or running emulator. Canvas engine unit tests are
+shared in `app/src/test` and run for both flavors.
 
 Run the DEV debug instrumentation tests with:
 
 ```shell
 ./gradlew connectedDevDebugAndroidTest
+./gradlew connectedProdDebugAndroidTest
 ```
 
 ## Languages
