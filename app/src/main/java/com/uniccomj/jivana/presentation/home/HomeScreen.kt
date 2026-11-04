@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,12 +19,13 @@ import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.presentation.components.JiveHomeCharacter
+import com.uniccomj.jivana.presentation.jiveplayground.JiveVisualStateResolver
 
 private const val JiveWidthFraction = 0.72f
 
 @Composable
-@Suppress("UNUSED_PARAMETER") // Preserve the condition input; visual state mapping is deferred.
 fun HomeScreen(condition: JiveCondition, modifier: Modifier = Modifier) {
+    val visualState = remember(condition) { JiveVisualStateResolver.resolve(condition) }
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -32,6 +34,7 @@ fun HomeScreen(condition: JiveCondition, modifier: Modifier = Modifier) {
         Text(text = stringResource(R.string.home_title))
         Spacer(modifier = Modifier.height(24.dp))
         JiveHomeCharacter(
+            visualState = visualState,
             modifier = Modifier
                 .fillMaxWidth(JiveWidthFraction)
                 .widthIn(max = 280.dp)

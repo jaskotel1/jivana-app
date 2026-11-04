@@ -85,6 +85,8 @@ class JiveAnimatorTest {
         val result = JivePose()
         JiveMotion.sample(JiveAnimation.WALKING, 0.25f, a)
         JiveMotion.sample(JiveAnimation.SAD, 0.9f, b)
+        b.shoulderDrop = 7f
+        b.eyeTilt = -13f
         result.interpolate(a, b, 0.5f)
         values(result).zip(values(a).zip(values(b))).forEach { (actual, endpoints) ->
             assertEquals((endpoints.first + endpoints.second) / 2f, actual, 0.00001f)
@@ -157,7 +159,8 @@ class JiveAnimatorTest {
     private fun values(pose: JivePose): List<Float> = with(pose) {
         listOf(
             rootY, bodyY, bodyRotation, bodyScaleX, bodyScaleY, leftArm, rightArm,
-            leftLeg, rightLeg, leftFootLift, rightFootLift, eyeOpenness, pupilX, pupilY, expression
+            leftLeg, rightLeg, leftFootLift, rightFootLift, eyeOpenness, pupilX, pupilY, expression,
+            shoulderDrop, eyeTilt
         )
     }
 }

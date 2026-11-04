@@ -51,20 +51,22 @@ internal class JiveRenderer {
                                     Offset(p.CenterX, p.BodyBottom)
                                 ) {
                                     // Arms sit behind the body; their sleeves share the exact same joint transform.
-                                    arm(
-                                        p.LeftShoulderX,
-                                        pose.leftArm,
-                                        false,
-                                        JiveJoint.LEFT_ARM,
-                                        outfit
-                                    )
-                                    arm(
-                                        p.RightShoulderX,
-                                        pose.rightArm,
-                                        true,
-                                        JiveJoint.RIGHT_ARM,
-                                        outfit
-                                    )
+                                    translate(top = pose.shoulderDrop) {
+                                        arm(
+                                            p.LeftShoulderX,
+                                            pose.leftArm,
+                                            false,
+                                            JiveJoint.LEFT_ARM,
+                                            outfit
+                                        )
+                                        arm(
+                                            p.RightShoulderX,
+                                            pose.rightArm,
+                                            true,
+                                            JiveJoint.RIGHT_ARM,
+                                            outfit
+                                        )
+                                    }
                                     shape(geometry.body, JivePalette.Body)
                                     garments(JiveJoint.BODY, outfit)
                                     drawPath(geometry.hair, JivePalette.Outline, style = outline)
@@ -110,46 +112,76 @@ internal class JiveRenderer {
 
     private fun DrawScope.eye(x: Float, pose: JivePose) {
         translate(x, p.EyeY) {
-            scale(1f, pose.eyeOpenness, Offset.Zero) {
-                drawPath(geometry.eye, JivePalette.White)
-                clipPath(geometry.eye) {
-                    drawOval(
-                        JivePalette.Pupil,
-                        Offset(-7f + pose.pupilX, -12f + pose.pupilY),
-                        Size(16f, 26f)
-                    )
+            rotate(if (x == p.LeftEyeX) pose.eyeTilt else -pose.eyeTilt, Offset.Zero) {
+                val openness = pose.eyeOpenness.coerceIn(0f, 1f)
+                val openAlpha = (openness / 0.25f).coerceIn(0f, 1f)
+                if (openness > 0f) {
+                    scale(1f, openness, Offset.Zero) {
+                        drawPath(geometry.eye, JivePalette.White, alpha = openAlpha)
+                        clipPath(geometry.eye) {
+                            drawOval(
+                                JivePalette.Pupil,
+                                Offset(-7f + pose.pupilX, -12f + pose.pupilY),
+                                Size(16f, 26f),
+                                alpha = openAlpha
+                            )
+                        }
+                    }
                 }
+                // The closed lid shares the eye/body transforms, but never the collapsing Y scale.
+                drawPath(
+                    geometry.eyelid,
+                    JivePalette.Outline,
+                    alpha = 1f - openAlpha,
+                    style = detail
+                )
             }
         }
     }
 
     private fun DrawScope.mouth(expression: Float) {
-        val smile = expression.coerceIn(-1f, 1f)
-        val sadness = (-smile).coerceAtLeast(0f)
-        val width = 23f + smile * 3f
-        val y = 226f
-        val topCurve = 235f - sadness * 34f
-        val bottomCurve = 268f + smile * 9f - sadness * 47f
+        val emotion = expression.coerceIn(-1f, 1f)
+        val joy = emotion.coerceAtLeast(0f)
+        val sadness = (-emotion).coerceAtLeast(0f)
+        val width = 22f + joy * 8f - sadness * 4f
+        val y = 232f - joy * 14f
+        val curve = 8f + joy * 14f - sadness * 34f
+        val opening = joy * joy * 48f
         geometry.mouth.apply {
             reset()
             moveTo(p.CenterX - width, y)
-            quadraticTo(p.CenterX, topCurve, p.CenterX + width, y)
-            cubicTo(
-                p.CenterX + width,
-                bottomCurve,
-                p.CenterX - width,
-                bottomCurve,
-                p.CenterX - width,
-                y
-            )
+            quadraticTo(p.CenterX, y + curve, p.CenterX + width, y)
+            quadraticTo(p.CenterX, y + curve + opening, p.CenterX - width, y)
             close()
         }
         drawPath(geometry.mouth, JivePalette.Outline)
         clipPath(geometry.mouth) {
-            val toothColor = JivePalette.White.copy(alpha = 1f - sadness)
-            drawRoundRect(toothColor, Offset(145f, 229f), Size(13f, 14f), CornerRadius(3f))
-            drawRoundRect(toothColor, Offset(162f, 229f), Size(13f, 14f), CornerRadius(3f))
+            val teethAlpha = ((joy - 0.35f) / 0.35f).coerceIn(0f, 1f)
+            // Sample the upper lip at each tooth's center (symmetric about CenterX).
+            val toothOffset = 8.5f / width
+            val curveFactor = 1f - toothOffset * toothOffset
+            val upperLipY = y + curve * 0.5f * curveFactor
+            val toothLength = minOf(12f, opening * 0.5f * curveFactor * 0.65f)
+            // Hide the rounded roots under the upper lip; only the hanging crowns are visible.
+            val toothY = upperLipY - 6f
+            val toothSize = Size(13f, 6f + toothLength)
+            drawRoundRect(
+                JivePalette.White,
+                Offset(145f, toothY),
+                toothSize,
+                CornerRadius(3f),
+                alpha = teethAlpha
+            )
+            drawRoundRect(
+                JivePalette.White,
+                Offset(162f, toothY),
+                toothSize,
+                CornerRadius(3f),
+                alpha = teethAlpha
+            )
         }
+        // The lip overlaps the tooth roots instead of being painted over by them.
+        drawPath(geometry.mouth, JivePalette.Outline, style = detail)
     }
 
     private fun DrawScope.garments(joint: JiveJoint, outfit: JiveOutfit) {

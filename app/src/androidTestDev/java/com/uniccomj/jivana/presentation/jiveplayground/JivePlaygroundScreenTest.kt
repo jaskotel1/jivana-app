@@ -3,13 +3,16 @@ package com.uniccomj.jivana.presentation.jiveplayground
 import android.graphics.Bitmap
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -17,6 +20,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.platform.app.InstrumentationRegistry
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.JiveCondition
+import com.uniccomj.jivana.domain.model.JiveEnergy
+import com.uniccomj.jivana.domain.model.JiveMood
+import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.presentation.navigation.AppNavHost
 import java.io.File
 import org.junit.Assert.assertFalse
@@ -103,6 +109,67 @@ class JivePlaygroundScreenTest {
         compose.mainClock.advanceTimeBy(1000)
         compose.onNodeWithTag("jive_playground_open").assertIsDisplayed()
         compose.onNodeWithTag("jive_character").assertDoesNotExist()
+    }
+
+    @Test
+    fun conditionPreviewSupportsAllOptionsAndOutfitsAndReturnsToLegacyAnimations() {
+        compose.mainClock.autoAdvance = false
+        compose.setContent { JivanaTheme { JivePlaygroundScreen(onBack = {}) } }
+        selectOption("preview_condition")
+        for (mood in JiveMood.entries) {
+            selectOption("mood_${mood.name}")
+            compose.mainClock.advanceTimeBy(400)
+            saveConditionCharacter("condition_${mood.name.lowercase()}")
+        }
+        for (energy in JiveEnergy.entries) {
+            selectOption("energy_${energy.name}")
+        }
+        for (sleepiness in JiveSleepiness.entries) {
+            selectOption("sleepiness_${sleepiness.name}")
+        }
+        for (outfit in JiveWardrobe.All) {
+            selectOption("outfit_${outfit.id}")
+            compose.mainClock.advanceTimeBy(400)
+            compose.onNodeWithTag("mood_DEVASTATED").assertIsSelected()
+            compose.onNodeWithTag("energy_EXHAUSTED").assertIsSelected()
+            compose.onNodeWithTag("sleepiness_SLEEPING").assertIsSelected()
+            saveConditionCharacter("sleeping_${outfit.id}")
+        }
+        selectOption("preview_animations")
+        selectOption("animation_WALKING")
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithTag("animation_WALKING").assertIsSelected()
+        compose.onNodeWithTag("outfit_sport").assertIsSelected()
+        saveConditionCharacter("walking_after_condition")
+    }
+
+    private fun selectOption(tag: String) {
+        scrollTo(tag)
+        compose.onNodeWithTag(tag).performClick()
+        compose.mainClock.advanceTimeByFrame()
+        compose.onNodeWithTag(tag).assertIsSelected()
+    }
+
+    private fun scrollTo(tag: String) {
+        // Semantics scrolling animates too: advance the manual test clock between scroll requests.
+        repeat(3) {
+            val node = compose.onNodeWithTag(tag).fetchSemanticsNode()
+            val viewport = compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
+            val top = node.positionInRoot.y
+            val bottom = top + node.size.height
+            if (top >= viewport.top && bottom <= viewport.bottom) return
+            val delta = (top + bottom) / 2f - viewport.center.y
+            compose.onNode(hasScrollAction()).performSemanticsAction(SemanticsActions.ScrollBy) {
+                it(0f, delta)
+            }
+            compose.mainClock.advanceTimeBy(1000)
+        }
+        compose.onNodeWithTag(tag).assertIsDisplayed()
+    }
+
+    private fun saveConditionCharacter(name: String) {
+        scrollTo("jive_character")
+        saveCharacter(name)
     }
 
     private fun characterBitmap(): Bitmap = compose.onNodeWithTag("jive_character")

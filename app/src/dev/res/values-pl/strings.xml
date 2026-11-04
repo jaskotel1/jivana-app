@@ -11,4 +11,24 @@
     <string name="jive_outfit_default">Podstawowy</string>
     <string name="jive_outfit_hoodie">Bluza</string>
     <string name="jive_outfit_sport">Sportowy</string>
+    <string name="jive_preview_animations">Animacje</string>
+    <string name="jive_preview_condition">Podgląd kondycji</string>
+    <string name="jive_condition_mood">Nastrój</string>
+    <string name="jive_condition_energy">Energia</string>
+    <string name="jive_condition_sleepiness">Senność</string>
+    <string name="jive_mood_neutral">Neutralny</string>
+    <string name="jive_mood_happy">Radosny</string>
+    <string name="jive_mood_very_happy">Bardzo radosny</string>
+    <string name="jive_mood_ecstatic">Zachwycony</string>
+    <string name="jive_mood_sad">Smutny</string>
+    <string name="jive_mood_very_sad">Bardzo smutny</string>
+    <string name="jive_mood_devastated">Przygnębiony</string>
+    <string name="jive_energy_normal">Normalna</string>
+    <string name="jive_energy_tired">Zmęczony</string>
+    <string name="jive_energy_very_tired">Bardzo zmęczony</string>
+    <string name="jive_energy_exhausted">Wyczerpany</string>
+    <string name="jive_sleepiness_awake">Rozbudzony</string>
+    <string name="jive_sleepiness_sleepy">Senny</string>
+    <string name="jive_sleepiness_very_sleepy">Bardzo senny</string>
+    <string name="jive_sleepiness_sleeping">Śpiący</string>
 </resources>
