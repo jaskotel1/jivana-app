@@ -21,7 +21,6 @@ import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.domain.model.JiveEnergy
 import com.uniccomj.jivana.domain.model.JiveMood
-import com.uniccomj.jivana.domain.model.JiveReaction
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import java.io.File
 import kotlin.math.abs
@@ -54,7 +53,7 @@ class JiveHomeScreenTest {
     }
 
     @Test
-    fun conditionChangesKeepTheSameDefaultCharacterWithoutVisualStateMapping() {
+    fun conditionChangesUpdateTheCharacterAndAnInactiveScreenFreezesTheTransition() {
         compose.mainClock.autoAdvance = false
         val condition = mutableStateOf(JiveCondition())
         val owner = ownerAt(Lifecycle.State.RESUMED)
@@ -64,21 +63,24 @@ class JiveHomeScreenTest {
             }
         }
         compose.mainClock.advanceTimeBy(900)
-        compose.runOnUiThread { owner.registry.currentState = Lifecycle.State.CREATED }
         val initial = characterBitmap()
         val extremes = listOf(
             JiveCondition(
                 mood = JiveMood.DEVASTATED,
                 energy = JiveEnergy.EXHAUSTED,
-                sleepiness = JiveSleepiness.SLEEPING,
-                reaction = JiveReaction.CELEBRATING
+                sleepiness = JiveSleepiness.SLEEPING
             ),
             JiveCondition(mood = JiveMood.ECSTATIC)
         )
         for (next in extremes) {
             compose.runOnUiThread { condition.value = next }
-            compose.mainClock.advanceTimeByFrame()
-            assertTrue(initial.sameAs(characterBitmap()))
+            compose.mainClock.advanceTimeBy(500)
+            assertFalse(initial.sameAs(characterBitmap()))
+            compose.runOnUiThread { owner.registry.currentState = Lifecycle.State.CREATED }
+            val paused = characterBitmap()
+            compose.mainClock.advanceTimeBy(1000)
+            assertTrue(paused.sameAs(characterBitmap()))
+            compose.runOnUiThread { owner.registry.currentState = Lifecycle.State.RESUMED }
         }
     }
 

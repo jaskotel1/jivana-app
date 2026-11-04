@@ -2,8 +2,9 @@ package com.uniccomj.jivana.presentation.components
 
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -15,16 +16,21 @@ import com.uniccomj.jivana.R
 import com.uniccomj.jivana.presentation.jiveplayground.JiveAnimationClock
 import com.uniccomj.jivana.presentation.jiveplayground.JiveAnimator
 import com.uniccomj.jivana.presentation.jiveplayground.JiveCharacter
+import com.uniccomj.jivana.presentation.jiveplayground.JiveVisualState
 import com.uniccomj.jivana.presentation.jiveplayground.JiveWardrobe
 
 private const val HomeCharacterAspectRatio = 1f
 
-/** Home deliberately uses Idle / Default, independently of the business condition. */
+/** Condition affects pose targets; the default outfit and animator instance remain independent. */
 @Composable
-fun JiveHomeCharacter(modifier: Modifier = Modifier) {
+fun JiveHomeCharacter(visualState: JiveVisualState, modifier: Modifier = Modifier) {
     val animator = remember { JiveAnimator() }
-    var frame by remember { mutableFloatStateOf(0f) }
-    JiveAnimationClock(animator) { frame += 1f }
+    var frame by remember { mutableIntStateOf(0) }
+    LaunchedEffect(visualState) {
+        animator.updateVisualState(visualState)
+        frame++
+    }
+    JiveAnimationClock(animator) { frame++ }
     val description = stringResource(R.string.avatar_title)
     JiveCharacter(
         pose = {

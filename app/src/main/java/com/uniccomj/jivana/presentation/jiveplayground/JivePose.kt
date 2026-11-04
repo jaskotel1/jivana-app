@@ -13,11 +13,13 @@ class JivePose {
     var bodyScaleY = 1f
     var leftArm = 0f
     var rightArm = 0f
+    var shoulderDrop = 0f
     var leftLeg = 0f
     var rightLeg = 0f
     var leftFootLift = 0f
     var rightFootLift = 0f
     var eyeOpenness = 1f
+    var eyeTilt = 0f
     var pupilX = 0f
     var pupilY = 0f
     var expression = 0f
@@ -33,11 +35,13 @@ class JivePose {
         bodyScaleY = mix(from.bodyScaleY, to.bodyScaleY, t)
         leftArm = mix(from.leftArm, to.leftArm, t)
         rightArm = mix(from.rightArm, to.rightArm, t)
+        shoulderDrop = mix(from.shoulderDrop, to.shoulderDrop, t)
         leftLeg = mix(from.leftLeg, to.leftLeg, t)
         rightLeg = mix(from.rightLeg, to.rightLeg, t)
         leftFootLift = mix(from.leftFootLift, to.leftFootLift, t)
         rightFootLift = mix(from.rightFootLift, to.rightFootLift, t)
         eyeOpenness = mix(from.eyeOpenness, to.eyeOpenness, t)
+        eyeTilt = mix(from.eyeTilt, to.eyeTilt, t)
         pupilX = mix(from.pupilX, to.pupilX, t)
         pupilY = mix(from.pupilY, to.pupilY, t)
         expression = mix(from.expression, to.expression, t)

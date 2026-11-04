@@ -33,6 +33,10 @@ internal class JiveGeometry {
     val eye = Path().apply {
         addOval(Rect(-p.EyeWidth / 2f, -p.EyeHeight / 2f, p.EyeWidth / 2f, p.EyeHeight / 2f))
     }
+    val eyelid = Path().apply {
+        moveTo(-22f, 0f)
+        quadraticTo(0f, 12f, 22f, 0f)
+    }
     val hair = Path().apply {
         moveTo(145f, p.BodyTop)
         quadraticTo(143f, 69f, 132f, 63f)
@@ -45,22 +49,23 @@ internal class JiveGeometry {
     // Mutable mouth paths allow continuous expression changes without allocating Paths per frame.
     val mouth = Path()
     val hoodie = Path().apply {
-        moveTo(75f, 251f)
-        quadraticTo(115f, 248f, 160f, 266f)
-        quadraticTo(205f, 248f, 245f, 251f)
-        lineTo(251f, 304f)
-        cubicTo(251f, 340f, 210f, 346f, 160f, 346f)
-        cubicTo(110f, 346f, 69f, 340f, 69f, 304f)
+        moveTo(65f, 239f)
+        cubicTo(99f, 230f, 129f, 244f, 160f, 257f)
+        cubicTo(191f, 244f, 221f, 230f, 255f, 239f)
+        cubicTo(261f, 260f, 255f, 297f, 247f, 318f)
+        cubicTo(239f, 340f, 200f, 346f, 160f, 346f)
+        cubicTo(120f, 346f, 81f, 340f, 73f, 318f)
+        cubicTo(65f, 297f, 59f, 260f, 65f, 239f)
         close()
     }
     val collar = Path().apply {
-        moveTo(76f, 246f)
-        quadraticTo(111f, 245f, 160f, 266f)
-        quadraticTo(209f, 245f, 244f, 246f)
-        quadraticTo(254f, 249f, 247f, 260f)
-        quadraticTo(208f, 263f, 160f, 279f)
-        quadraticTo(112f, 263f, 73f, 260f)
-        quadraticTo(66f, 251f, 76f, 246f)
+        moveTo(65f, 239f)
+        cubicTo(99f, 230f, 129f, 244f, 160f, 257f)
+        cubicTo(191f, 244f, 221f, 230f, 255f, 239f)
+        quadraticTo(260f, 246f, 253f, 252f)
+        cubicTo(219f, 244f, 189f, 258f, 160f, 270f)
+        cubicTo(131f, 258f, 101f, 244f, 67f, 252f)
+        quadraticTo(60f, 246f, 65f, 239f)
         close()
     }
     val pocket = Path().apply {
@@ -71,24 +76,26 @@ internal class JiveGeometry {
         close()
     }
     val longSleeve = Path().apply {
-        moveTo(0f, -10f)
-        cubicTo(-15f, -12f, -26f, 17f, -32f, 49f)
+        moveTo(0f, -12f)
+        cubicTo(-17f, -16f, -29f, 15f, -34f, 49f)
         quadraticTo(-21f, 60f, -7f, 56f)
-        lineTo(10f, 10f)
+        lineTo(12f, 10f)
         close()
     }
     val shortSleeve = Path().apply {
-        moveTo(0f, -8f)
-        quadraticTo(-15f, -8f, -26f, 24f)
+        moveTo(0f, -10f)
+        quadraticTo(-18f, -13f, -29f, 24f)
         lineTo(-3f, 34f)
-        lineTo(11f, 8f)
+        lineTo(13f, 8f)
         close()
     }
     val tshirt = Path().apply {
-        moveTo(76f, 250f)
-        quadraticTo(160f, 281f, 244f, 250f)
-        lineTo(252f, 309f)
-        quadraticTo(160f, 330f, 68f, 309f)
+        moveTo(65f, 240f)
+        cubicTo(100f, 233f, 128f, 248f, 160f, 260f)
+        cubicTo(192f, 248f, 220f, 233f, 255f, 240f)
+        cubicTo(260f, 262f, 252f, 291f, 246f, 311f)
+        quadraticTo(160f, 335f, 74f, 311f)
+        cubicTo(68f, 291f, 60f, 262f, 65f, 240f)
         close()
     }
     val shorts = Path().apply {
