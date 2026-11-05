@@ -1,0 +1,155 @@
+package com.uniccomj.jivana.data.repository
+
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.uniccomj.jivana.data.local.database.JivanaDatabase
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
+import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
+import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
+import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
+import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
+import java.io.IOException
+import java.time.Clock
+import java.time.DayOfWeek
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class RoomHabitRepositoryTest {
+    private lateinit var database: JivanaDatabase
+    private lateinit var history: RoomHabitHistoryRepository
+    private lateinit var repository: RoomHabitRepository
+    private val events = HabitCompletionEvents()
+    private val start = LocalDate.of(2026, 11, 5)
+    private val startClock = Clock.fixed(Instant.parse("2026-11-05T12:00:00Z"), ZoneOffset.UTC)
+
+    @Before
+    fun setUp() {
+        database =
+            Room.inMemoryDatabaseBuilder(
+                ApplicationProvider.getApplicationContext(),
+                JivanaDatabase::class.java
+            ).build()
+        history =
+            RoomHabitHistoryRepository(database.habitHistoryDao(), JiveScoringConfig(), events)
+        repository = RoomHabitRepository(database, history)
+    }
+
+    @After
+    fun tearDown() {
+        database.close()
+    }
+
+    @Test
+    fun createAndCatchUpPreserveCompletionWithoutEventsOrInteractions() = runTest {
+        var reactions = 0
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            events.completions.collect { reactions++ }
+        }
+        val habit =
+            CreateHabitUseCase(repository, startClock)("Water", "Notes", DayOfWeek.entries.toSet())
+        assertEquals(habit, repository.getById(habit.id))
+        assertEquals(0, reactions)
+        assertEquals(
+            false,
+            history.observeDailyPerformance(start).first().single().activityRecorded
+        )
+        history.setHabitCompleted(habit.id, start, true)
+        assertEquals(1, reactions)
+        val end = start.plusDays(8)
+        val endClock = Clock.fixed(end.atTime(12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+        val ensure = EnsureHabitSchedulesUseCase(repository, endClock)
+        // Competing generators must commit both the plan and cursor consistently.
+        List(3) { async { ensure() } }.awaitAll()
+        val performance = history.observeDailyPerformance(end).first()
+        assertEquals(9, performance.size)
+        assertEquals(1, performance.first().completedHabitCount)
+        assertTrue(performance.drop(1).all { !it.activityRecorded && it.completedHabitCount == 0 })
+        assertEquals(1, reactions)
+        assertTrue(repository.getPendingSchedules(end).isEmpty())
+        assertEquals(
+            end.toEpochDay(),
+            database.habitDao().getById(habit.id)!!.scheduledThroughEpochDay
+        )
+    }
+
+    @Test
+    fun concurrentRetriesCreateOnlyOneDefinitionAndInitialSchedule() = runTest {
+        val create = CreateHabitUseCase(repository, startClock)
+        val results = List(3) {
+            async { create("Water", "", DayOfWeek.entries.toSet(), "same-token") }
+        }.awaitAll()
+        assertEquals(1, results.map { it.id }.toSet().size)
+        assertEquals(1, history.observeDailyPerformance(start).first().single().plannedHabitCount)
+    }
+
+    @Test
+    fun failedInitialScheduleRollsBackDefinitionAndAllInsertedDates() = runTest {
+        val failingHistory = object : HabitHistoryRepository by history {
+            override suspend fun scheduleHabit(habitId: String, dates: Set<LocalDate>) {
+                history.scheduleHabit(habitId, dates)
+                throw IOException("Simulated write failure after inserting schedules")
+            }
+        }
+        val failing = RoomHabitRepository(database, failingHistory)
+        try {
+            CreateHabitUseCase(failing, startClock)("Water", "", DayOfWeek.entries.toSet())
+            error("Expected failure")
+        } catch (_: IOException) {
+            assertTrue(history.observeDailyPerformance(start).first().isEmpty())
+            assertTrue(repository.getPendingSchedules(start.plusDays(1)).isEmpty())
+        }
+    }
+
+    @Test
+    fun failedCatchUpDoesNotAdvanceCursorOrLeavePartiallyWrittenDates() = runTest {
+        val habit =
+            CreateHabitUseCase(repository, startClock)("Water", "", DayOfWeek.entries.toSet())
+        val failingHistory = object : HabitHistoryRepository by history {
+            override suspend fun scheduleHabit(habitId: String, dates: Set<LocalDate>) {
+                history.scheduleHabit(habitId, dates)
+                throw IOException("Simulated failure")
+            }
+        }
+        val end = start.plusDays(5)
+        val endClock = Clock.fixed(end.atTime(12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+        try {
+            EnsureHabitSchedulesUseCase(RoomHabitRepository(database, failingHistory), endClock)()
+            error("Expected failure")
+        } catch (_: IOException) {
+            assertEquals(
+                start.toEpochDay(),
+                database.habitDao().getById(habit.id)!!.scheduledThroughEpochDay
+            )
+            assertEquals(1, history.observeDailyPerformance(end).first().size)
+        }
+        EnsureHabitSchedulesUseCase(repository, endClock)()
+        assertEquals(6, history.observeDailyPerformance(end).first().size)
+    }
+
+    @Test
+    fun aDayNotSelectedCreatesDefinitionWithoutSchedulingTheFuture() = runTest {
+        val habit =
+            CreateHabitUseCase(repository, startClock)("Exercise", "", setOf(DayOfWeek.FRIDAY))
+        assertNotNull(repository.getById(habit.id))
+        assertTrue(history.observeDailyPerformance(start.plusDays(20)).first().isEmpty())
+        assertEquals(
+            start.toEpochDay(),
+            database.habitDao().getById(habit.id)!!.scheduledThroughEpochDay
+        )
+    }
+}

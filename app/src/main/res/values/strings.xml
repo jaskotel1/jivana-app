@@ -4,4 +4,27 @@
     <string name="habits_title">Habits</string>
     <string name="avatar_title">Avatar</string>
     <string name="settings_title">Settings</string>
+    <string name="habit_create_title">Create habit</string>
+    <string name="habit_name">Habit name</string>
+    <string name="habit_name_example">Drink 2 litres of water</string>
+    <string name="habit_description">Description (optional)</string>
+    <string name="habit_frequency">Frequency</string>
+    <string name="habit_every_day">Every day</string>
+    <string name="habit_selected_days">Selected days</string>
+    <string name="habit_starts_today">Starts today. Your habit is planned on the selected days of the week.</string>
+    <string name="habit_save">Save habit</string>
+    <string name="habit_saving">Saving…</string>
+    <string name="habit_cancel">Cancel</string>
+    <string name="habit_name_required">Enter a habit name.</string>
+    <string name="habit_days_required">Select at least one day.</string>
+    <string name="habit_save_error">Could not save your habit. Your entries are preserved. Please try again.</string>
+    <string name="habit_schedule_error">Could not update your habit schedule. Please try again.</string>
+    <string name="habit_retry">Try again</string>
+    <string-array name="habit_weekdays_short">
+        <item>Mon</item><item>Tue</item><item>Wed</item><item>Thu</item><item>Fri</item><item>Sat</item><item>Sun</item>
+    </string-array>
+    <string-array name="habit_weekdays_full">
+        <item>Monday</item><item>Tuesday</item><item>Wednesday</item><item>Thursday</item>
+        <item>Friday</item><item>Saturday</item><item>Sunday</item>
+    </string-array>
 </resources>
