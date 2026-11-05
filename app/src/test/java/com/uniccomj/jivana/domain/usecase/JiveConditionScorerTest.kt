@@ -1,6 +1,7 @@
 package com.uniccomj.jivana.domain.usecase
 
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.domain.model.JiveEnergy
 import com.uniccomj.jivana.domain.model.JiveMood
@@ -88,7 +89,7 @@ class JiveConditionScorerTest {
 
     @Test
     fun `scored condition can be published by controller`() {
-        val controller = JiveConditionController()
+        val controller = JiveConditionController(HabitCompletionEvents())
         val scoredCondition = scorer.score(days(count = 7, completionPercent = 20))
 
         controller.updateCondition(scoredCondition)

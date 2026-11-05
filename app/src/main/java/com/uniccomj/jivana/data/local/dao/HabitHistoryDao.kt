@@ -155,13 +155,19 @@ abstract class HabitHistoryDao {
     abstract suspend fun insertSchedules(schedules: List<HabitScheduleEntity>)
 
     @Transaction
-    open suspend fun setHabitCompleted(habitId: String, dateEpochDay: Long, completed: Boolean) {
-        if (completed) {
-            insertCompletion(HabitCompletionEntity(habitId, dateEpochDay))
+    open suspend fun setHabitCompleted(
+        habitId: String,
+        dateEpochDay: Long,
+        completed: Boolean
+    ): Boolean {
+        val newlyCompleted = if (completed) {
+            insertCompletion(HabitCompletionEntity(habitId, dateEpochDay)) != -1L
         } else {
             deleteCompletion(HabitCompletionEntity(habitId, dateEpochDay))
+            false
         }
         insertInteraction(HabitDayInteractionEntity(dateEpochDay))
+        return newlyCompleted
     }
 
     @Transaction
@@ -170,7 +176,7 @@ abstract class HabitHistoryDao {
     }
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    protected abstract suspend fun insertCompletion(completion: HabitCompletionEntity)
+    protected abstract suspend fun insertCompletion(completion: HabitCompletionEntity): Long
 
     @Delete
     protected abstract suspend fun deleteCompletion(completion: HabitCompletionEntity)

@@ -32,6 +32,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     AppNavHost(
                         jiveCondition = jiveCondition,
+                        jiveReactions = jiveConditionViewModel.reactions,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }

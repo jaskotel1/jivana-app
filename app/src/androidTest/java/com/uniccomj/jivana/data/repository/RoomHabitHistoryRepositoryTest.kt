@@ -6,11 +6,15 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import java.time.LocalDate
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -19,9 +23,11 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 class RoomHabitHistoryRepositoryTest {
     private lateinit var database: JivanaDatabase
     private lateinit var repository: RoomHabitHistoryRepository
+    private lateinit var completionEvents: HabitCompletionEvents
 
     @Before
     fun setUp() {
@@ -29,12 +35,38 @@ class RoomHabitHistoryRepositoryTest {
         database = Room.inMemoryDatabaseBuilder(context, JivanaDatabase::class.java)
             .allowMainThreadQueries()
             .build()
-        repository = RoomHabitHistoryRepository(database.habitHistoryDao(), JiveScoringConfig())
+        completionEvents = HabitCompletionEvents()
+        repository =
+            RoomHabitHistoryRepository(
+                database.habitHistoryDao(),
+                JiveScoringConfig(),
+                completionEvents
+            )
     }
 
     @After
     fun tearDown() {
         database.close()
+    }
+
+    @Test
+    fun onlyNewCommittedCompletionsEmitEvents() = runTest {
+        val date = LocalDate.of(2026, 1, 1)
+        scheduleHabits(count = 2, date = date)
+        var completions = 0
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            completionEvents.completions.collect { completions++ }
+        }
+
+        repository.setHabitCompleted("habit-0", date, completed = true)
+        repository.setHabitCompleted("habit-0", date, completed = true)
+        repository.setHabitCompleted("habit-0", date, completed = false)
+        repository.recordDailyCheckIn(date)
+        assertEquals(1, completions)
+        repository.setHabitCompleted("habit-0", date, completed = true)
+        repository.setHabitCompleted("habit-1", date, completed = true)
+        repository.observeDailyPerformance(date).first()
+        assertEquals(3, completions)
     }
 
     @Test

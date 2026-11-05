@@ -4,6 +4,7 @@ import com.uniccomj.jivana.data.local.dao.HabitHistoryDao
 import com.uniccomj.jivana.data.local.entity.HabitScheduleEntity
 import com.uniccomj.jivana.data.mapper.toDomain
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import java.time.LocalDate
@@ -16,7 +17,8 @@ import kotlinx.coroutines.flow.map
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoomHabitHistoryRepository @Inject constructor(
     private val dao: HabitHistoryDao,
-    private val scoringConfig: JiveScoringConfig
+    private val scoringConfig: JiveScoringConfig,
+    private val completionEvents: HabitCompletionEvents
 ) : HabitHistoryRepository {
     override fun observeDailyPerformance(
         throughDate: LocalDate
@@ -49,7 +51,10 @@ class RoomHabitHistoryRepository @Inject constructor(
 
     override suspend fun setHabitCompleted(habitId: String, date: LocalDate, completed: Boolean) {
         require(habitId.isNotBlank()) { "Habit id cannot be blank" }
-        dao.setHabitCompleted(habitId, date.toEpochDay(), completed)
+        if (dao.setHabitCompleted(habitId, date.toEpochDay(), completed)) {
+            // The transaction has committed; ignored duplicate inserts never celebrate.
+            completionEvents.notifyCompletion()
+        }
     }
 
     override suspend fun recordDailyCheckIn(date: LocalDate) {

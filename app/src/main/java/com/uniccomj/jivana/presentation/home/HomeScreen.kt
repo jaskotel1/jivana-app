@@ -18,13 +18,20 @@ import androidx.compose.ui.unit.dp
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.JiveCondition
+import com.uniccomj.jivana.domain.model.JiveReaction
 import com.uniccomj.jivana.presentation.components.JiveHomeCharacter
 import com.uniccomj.jivana.presentation.jiveplayground.JiveVisualStateResolver
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 private const val JiveWidthFraction = 0.72f
 
 @Composable
-fun HomeScreen(condition: JiveCondition, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    condition: JiveCondition,
+    modifier: Modifier = Modifier,
+    reactions: Flow<JiveReaction> = emptyFlow()
+) {
     val visualState = remember(condition) { JiveVisualStateResolver.resolve(condition) }
     Column(
         modifier = modifier.fillMaxSize(),
@@ -35,6 +42,7 @@ fun HomeScreen(condition: JiveCondition, modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(24.dp))
         JiveHomeCharacter(
             visualState = visualState,
+            reactions = reactions,
             modifier = Modifier
                 .fillMaxWidth(JiveWidthFraction)
                 .widthIn(max = 280.dp)

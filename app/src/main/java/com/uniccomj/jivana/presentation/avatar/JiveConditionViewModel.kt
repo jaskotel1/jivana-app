@@ -23,6 +23,7 @@ class JiveConditionViewModel @Inject constructor(
     private val currentDate = MutableStateFlow(LocalDate.now(clock))
 
     val condition = controller.condition
+    val reactions = controller.reactions
 
     init {
         currentDate

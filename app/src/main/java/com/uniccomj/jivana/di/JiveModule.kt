@@ -1,5 +1,6 @@
 package com.uniccomj.jivana.di
 
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
@@ -9,10 +10,15 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.time.Clock
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object JiveModule {
+    @Provides
+    @Singleton
+    fun provideHabitCompletionEvents(): HabitCompletionEvents = HabitCompletionEvents()
+
     @Provides
     fun provideJiveScoringConfig(): JiveScoringConfig = JiveScoringConfig()
 
