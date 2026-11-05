@@ -1,6 +1,7 @@
 package com.uniccomj.jivana.presentation.avatar
 
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
+import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.domain.model.JiveEnergy
 import com.uniccomj.jivana.domain.model.JiveMood
@@ -45,11 +46,11 @@ class JiveConditionViewModelTest {
     fun `existing history is scored after presentation layer is recreated`() = runTest(dispatcher) {
         val repository = FakeHabitHistoryRepository(inactiveHistory(dayCount = 14))
 
-        val firstController = JiveConditionController()
+        val firstController = JiveConditionController(HabitCompletionEvents())
         createViewModel(repository, firstController)
         advanceUntilIdle()
 
-        val recreatedController = JiveConditionController()
+        val recreatedController = JiveConditionController(HabitCompletionEvents())
         createViewModel(repository, recreatedController)
         advanceUntilIdle()
 
@@ -60,7 +61,7 @@ class JiveConditionViewModelTest {
     @Test
     fun `history change is automatically rescored and published`() = runTest(dispatcher) {
         val repository = FakeHabitHistoryRepository(emptyList())
-        val controller = JiveConditionController()
+        val controller = JiveConditionController(HabitCompletionEvents())
         createViewModel(repository, controller)
         advanceUntilIdle()
 
@@ -85,7 +86,7 @@ class JiveConditionViewModelTest {
         val clock = MutableClock(Instant.parse("2026-01-31T12:00:00Z"))
         val viewModel = createViewModel(
             repository = repository,
-            controller = JiveConditionController(),
+            controller = JiveConditionController(HabitCompletionEvents()),
             clock = clock
         )
         advanceUntilIdle()

@@ -16,14 +16,18 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.domain.model.JiveCondition
+import com.uniccomj.jivana.domain.model.JiveReaction
 import com.uniccomj.jivana.presentation.home.HomeScreen
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 @Composable
 fun AppNavHost(
     jiveCondition: JiveCondition,
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
-    startDestination: AppDestination = AppDestination.Home
+    startDestination: AppDestination = AppDestination.Home,
+    jiveReactions: Flow<JiveReaction> = emptyFlow()
 ) {
     NavHost(
         navController = navController,
@@ -32,7 +36,7 @@ fun AppNavHost(
     ) {
         composable(AppDestination.Home.route) {
             Box(Modifier.fillMaxSize()) {
-                HomeScreen(condition = jiveCondition)
+                HomeScreen(condition = jiveCondition, reactions = jiveReactions)
                 DevelopmentHomeAction(
                     navController = navController,
                     modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)

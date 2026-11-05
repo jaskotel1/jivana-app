@@ -1,5 +1,6 @@
 package com.uniccomj.jivana.presentation.jiveplayground
 
+import com.uniccomj.jivana.domain.model.JiveReaction
 import kotlin.math.PI
 import kotlin.math.max
 import kotlin.math.sin
@@ -114,6 +115,7 @@ class JiveAnimator {
     var blinkSeconds = 0f
         private set
     private var animationsEnabled = true
+    private var celebrating = false
     private var visualSource = JiveVisualState()
     private var visualTarget = visualSource
     private var visualSeconds = JiveMotion.TransitionDuration
@@ -121,9 +123,19 @@ class JiveAnimator {
     private val source = JivePose()
     private val target = JivePose()
     private val rest = JivePose()
+    private val celebration = JivePose()
+
+    /** Repeated completions restart from the displayed pose instead of queuing animations. */
+    fun react(reaction: JiveReaction) {
+        if (reaction == JiveReaction.CELEBRATING && animationsEnabled) {
+            select(JiveAnimation.HAPPY)
+            celebrating = true
+        }
+    }
 
     fun select(next: JiveAnimation) {
         if (next == animation && next != JiveAnimation.HAPPY) return
+        celebrating = false
         source.setFrom(pose)
         animation = next
         JiveMotion.sample(next, 0f, rest)
@@ -149,6 +161,7 @@ class JiveAnimator {
             source.setFrom(pose)
             transitionSeconds = 0f
         } else {
+            if (celebrating) select(JiveAnimation.IDLE)
             renderStaticPose()
         }
     }
@@ -171,7 +184,13 @@ class JiveAnimator {
             motionSeconds
         }
         JiveMotion.sample(animation, sampleSeconds, target, blinkSeconds)
+        if (celebrating) celebration.setFrom(target)
         applyVisualState(target)
+        if (celebrating) {
+            // The positive pose briefly takes precedence even over sadness or sleep.
+            // Its envelope fades to zero, revealing the latest condition at the end.
+            target.interpolate(target, celebration, celebration.expression)
+        }
         pose.interpolate(source, target, easedFraction(transitionSeconds))
         if (animation == JiveAnimation.HAPPY && animationSeconds >= JiveMotion.HappyDuration) {
             select(JiveAnimation.IDLE)
