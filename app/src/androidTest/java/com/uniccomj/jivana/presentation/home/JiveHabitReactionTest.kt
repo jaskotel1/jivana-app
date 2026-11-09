@@ -45,7 +45,7 @@ class JiveHabitReactionTest {
             JivanaDatabase::class.java
         ).build()
         repository =
-            RoomHabitHistoryRepository(database.habitHistoryDao(), JiveScoringConfig(), events)
+            RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
         runBlocking { repository.scheduleHabit("habit", setOf(date)) }
     }
 

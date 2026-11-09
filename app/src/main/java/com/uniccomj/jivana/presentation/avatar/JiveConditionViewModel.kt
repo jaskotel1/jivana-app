@@ -39,9 +39,16 @@ class JiveConditionViewModel @Inject constructor(
     init {
         refreshRequests
             .flatMapLatest {
-                observeJiveCondition(LocalDate.now(clock))
+                val observedDate = LocalDate.now(clock)
+                observeJiveCondition(observedDate)
                     .onStart { mutableRefreshFailed.value = false }
-                    .onEach(controller::updateCondition)
+                    .onEach { condition ->
+                        if (observedDate == LocalDate.now(clock)) {
+                            controller.updateCondition(condition)
+                        } else {
+                            refreshForCurrentDay()
+                        }
+                    }
                     .catch { error ->
                         if (error !is IOException && error !is SQLiteException) throw error
                         mutableRefreshFailed.value = true

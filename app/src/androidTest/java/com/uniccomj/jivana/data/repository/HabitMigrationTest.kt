@@ -50,7 +50,7 @@ class HabitMigrationTest {
             }
             val history =
                 RoomHabitHistoryRepository(
-                    database.habitHistoryDao(),
+                    database,
                     JiveScoringConfig(),
                     HabitCompletionEvents()
                 )

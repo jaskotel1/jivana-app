@@ -7,17 +7,23 @@ import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
+import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
+import com.uniccomj.jivana.domain.usecase.ObserveJiveConditionUseCase
 import java.io.IOException
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -44,8 +50,7 @@ class RoomHabitRepositoryTest {
                 ApplicationProvider.getApplicationContext(),
                 JivanaDatabase::class.java
             ).build()
-        history =
-            RoomHabitHistoryRepository(database.habitHistoryDao(), JiveScoringConfig(), events)
+        history = RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
         repository = RoomHabitRepository(database, history)
     }
 
@@ -139,6 +144,45 @@ class RoomHabitRepositoryTest {
         }
         EnsureHabitSchedulesUseCase(repository, endClock)()
         assertEquals(6, history.observeDailyPerformance(end).first().size)
+    }
+
+    @Test
+    fun lateCreationWakesHistoryObserver() = runTest(timeout = 15.seconds) {
+        val nextDay = start.plusDays(1)
+        val beforeMidnight = Clock.fixed(
+            nextDay.atStartOfDay(ZoneOffset.UTC).toInstant().minusSeconds(1),
+            ZoneOffset.UTC
+        )
+        val afterMidnight = Clock.fixed(
+            nextDay.atStartOfDay(ZoneOffset.UTC).toInstant().plusSeconds(1),
+            ZoneOffset.UTC
+        )
+        val observe = ObserveJiveConditionUseCase(
+            history,
+            JiveConditionScorer(),
+            EnsureHabitSchedulesUseCase(repository, afterMidnight)
+        )
+        val initialHistoryObserved = CompletableDeferred<Unit>()
+        val updatedCondition = async {
+            observe(nextDay)
+                .onEach { initialHistoryObserved.complete(Unit) }
+                .drop(1)
+                .first()
+        }
+        initialHistoryObserved.await()
+
+        val habit = CreateHabitUseCase(repository, beforeMidnight)(
+            "Exercise",
+            "",
+            setOf(nextDay.dayOfWeek)
+        )
+        updatedCondition.await()
+
+        assertEquals(start, habit.startDate)
+        val planned = history.observeDailyPerformance(nextDay).first().single()
+        assertEquals(nextDay, planned.date)
+        assertEquals(1, planned.plannedHabitCount)
+        assertTrue(repository.getPendingSchedules(nextDay).isEmpty())
     }
 
     @Test

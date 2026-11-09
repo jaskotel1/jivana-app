@@ -1,9 +1,11 @@
 package com.uniccomj.jivana.data.repository
 
 import com.uniccomj.jivana.data.local.dao.HabitHistoryDao
+import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import io.mockk.coEvery
+import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
 import java.time.LocalDate
@@ -19,8 +21,10 @@ class HabitCompletionEventsTest {
     @Test
     fun `only successful new completions notify listeners`() = runTest {
         val dao = mockk<HabitHistoryDao>()
+        val database = mockk<JivanaDatabase>()
+        every { database.habitHistoryDao() } returns dao
         val events = HabitCompletionEvents()
-        val repository = RoomHabitHistoryRepository(dao, JiveScoringConfig(), events)
+        val repository = RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
         val date = LocalDate.of(2026, 11, 5)
         var completions = 0
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {

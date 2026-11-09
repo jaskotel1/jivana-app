@@ -2,7 +2,6 @@ package com.uniccomj.jivana.di
 
 import android.content.Context
 import androidx.room.Room
-import com.uniccomj.jivana.data.local.dao.HabitHistoryDao
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.data.local.database.JivanaMigrations
 import dagger.Module
@@ -23,8 +22,4 @@ object DatabaseModule {
             JivanaDatabase::class.java,
             "jivana.db"
         ).addMigrations(JivanaMigrations.Migration1To2).build()
-
-    @Provides
-    fun provideHabitHistoryDao(database: JivanaDatabase): HabitHistoryDao =
-        database.habitHistoryDao()
 }
