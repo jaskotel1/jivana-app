@@ -24,7 +24,9 @@ import java.io.IOException
 import java.time.Clock
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.Flow
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -117,6 +119,17 @@ class CreateHabitScreenTest {
         }
 
         override suspend fun getById(id: String): Habit? = created[id]
+
+        override fun observeActiveHabits(): Flow<List<Habit>> = error("Not exercised here")
+
+        override suspend fun archive(id: String, archivedAt: ZonedDateTime): Habit =
+            error("Not exercised here")
+
+        override suspend fun resolveActiveHabitConflict(
+            keepId: String,
+            expectedActiveIds: Set<String>,
+            archivedAt: ZonedDateTime
+        ): Unit = error("Not exercised here")
         override suspend fun getPendingSchedules(
             throughDate: LocalDate
         ): List<HabitScheduleProgress> = emptyList()

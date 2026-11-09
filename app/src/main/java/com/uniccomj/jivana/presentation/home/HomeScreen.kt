@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,11 +35,11 @@ fun HomeScreen(
     condition: JiveCondition,
     modifier: Modifier = Modifier,
     reactions: Flow<JiveReaction> = emptyFlow(),
-    onCreateHabit: () -> Unit = {}
+    habitControls: @Composable () -> Unit = { AddHabitButton({}) }
 ) {
     val visualState = remember(condition) { JiveVisualStateResolver.resolve(condition) }
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -51,9 +53,14 @@ fun HomeScreen(
                 .widthIn(max = 280.dp)
         )
         Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onCreateHabit, modifier = Modifier.testTag("habit_create_open")) {
-            Text(stringResource(R.string.habit_create_title))
-        }
+        habitControls()
+    }
+}
+
+@Composable
+internal fun AddHabitButton(onClick: () -> Unit, enabled: Boolean = true) {
+    Button(onClick = onClick, enabled = enabled, modifier = Modifier.testTag("habit_create_open")) {
+        Text(stringResource(R.string.habit_create_title))
     }
 }
 

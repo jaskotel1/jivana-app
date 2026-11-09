@@ -19,6 +19,16 @@
     <string name="habit_save_error">Nie udało się zapisać nawyku. Wprowadzone dane zostały zachowane. Spróbuj ponownie.</string>
     <string name="habit_schedule_error">Nie udało się zaktualizować harmonogramu nawyków. Spróbuj ponownie.</string>
     <string name="habit_retry">Spróbuj ponownie</string>
+    <string name="habit_loading">Wczytywanie nawyków…</string>
+    <string name="habit_active_limit">Możesz mieć jeden aktywny nawyk. Zarchiwizuj go, aby utworzyć następny.</string>
+    <string name="habit_token_conflict">Ten formularz zapisał już inny nawyk. Wróć i otwórz formularz ponownie.</string>
+    <string name="habit_archive">Zarchiwizuj nawyk</string>
+    <string name="habit_archive_confirmation">„%1$s” przestanie być aktywny. Zachowasz jego historię i możesz utworzyć nowy nawyk.</string>
+    <string name="habit_legacy_conflict">Masz kilka aktywnych nawyków. Wybierz, który ma pozostać aktywny.</string>
+    <string name="habit_keep_choice">Zachowaj %1$s · od %2$s</string>
+    <string name="habit_keep">Zachowaj ten nawyk</string>
+    <string name="habit_keep_confirmation">„%1$s” pozostanie aktywny. Pozostałe aktywne nawyki trafią do archiwum wraz z historią.</string>
+    <string name="habit_management_error">Nie udało się zaktualizować lub wczytać nawyków. Spróbuj ponownie.</string>
     <string-array name="habit_weekdays_short">
         <item>Pn</item><item>Wt</item><item>Śr</item><item>Cz</item><item>Pt</item><item>Sb</item><item>Nd</item>
     </string-array>

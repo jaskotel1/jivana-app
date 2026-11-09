@@ -20,6 +20,16 @@
     <string name="habit_save_error">Could not save your habit. Your entries are preserved. Please try again.</string>
     <string name="habit_schedule_error">Could not update your habit schedule. Please try again.</string>
     <string name="habit_retry">Try again</string>
+    <string name="habit_loading">Loading habits…</string>
+    <string name="habit_active_limit">You can have one active habit. Archive it to create another.</string>
+    <string name="habit_token_conflict">This form already saved a different habit. Go back and reopen the form.</string>
+    <string name="habit_archive">Archive habit</string>
+    <string name="habit_archive_confirmation">“%1$s” will stop being active. Its history will be kept, and you can create a new habit.</string>
+    <string name="habit_legacy_conflict">You have several active habits. Choose which one to keep active.</string>
+    <string name="habit_keep_choice">Keep %1$s · started %2$s</string>
+    <string name="habit_keep">Keep this habit</string>
+    <string name="habit_keep_confirmation">“%1$s” will stay active. The other active habits will be archived and their history will be kept.</string>
+    <string name="habit_management_error">Could not update or load your habits. Please try again.</string>
     <string-array name="habit_weekdays_short">
         <item>Mon</item><item>Tue</item><item>Wed</item><item>Thu</item><item>Fri</item><item>Sat</item><item>Sun</item>
     </string-array>

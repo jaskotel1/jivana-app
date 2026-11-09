@@ -8,9 +8,14 @@ import com.uniccomj.jivana.data.mapper.toEntity
 import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitScheduleProgress
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import java.time.LocalDate
+import java.time.ZonedDateTime
 import javax.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 class RoomHabitRepository @Inject constructor(
     private val database: JivanaDatabase,
@@ -22,14 +27,16 @@ class RoomHabitRepository @Inject constructor(
         database.withTransaction {
             val existing = dao.getById(habit.id)?.toDomain()
             if (existing != null) {
-                require(
-                    existing.name == habit.name && existing.description == habit.description &&
-                        existing.schedule == habit.schedule
+                if (existing.name != habit.name || existing.description != habit.description ||
+                    existing.schedule != habit.schedule
                 ) {
-                    "Request token already used for another habit"
+                    throw HabitOperationException.RequestTokenConflict()
                 }
                 existing
             } else {
+                if (habit.archivedAt == null && dao.countActive() >= MaxActiveHabits) {
+                    throw HabitOperationException.ActiveHabitLimitReached()
+                }
                 val expectedDates = if (habit.schedule.isPlannedOn(habit.startDate.dayOfWeek)) {
                     setOf(habit.startDate)
                 } else {
@@ -43,6 +50,42 @@ class RoomHabitRepository @Inject constructor(
         }
 
     override suspend fun getById(id: String): Habit? = dao.getById(id)?.toDomain()
+
+    override fun observeActiveHabits(): Flow<List<Habit>> =
+        dao.observeActiveHabits().map { habits ->
+            habits.map { it.toDomain() }
+        }.distinctUntilChanged()
+
+    override suspend fun archive(id: String, archivedAt: ZonedDateTime): Habit =
+        database.withTransaction {
+            val current = dao.getById(id) ?: throw HabitOperationException.ActiveHabitsChanged()
+            if (current.archivedAtEpochMillis != null) return@withTransaction current.toDomain()
+
+            archiveActive(id, archivedAt)
+            checkNotNull(dao.getById(id)).toDomain()
+        }
+
+    override suspend fun resolveActiveHabitConflict(
+        keepId: String,
+        expectedActiveIds: Set<String>,
+        archivedAt: ZonedDateTime
+    ) = database.withTransaction {
+        val activeIds = dao.getActiveIds().toSet()
+        if (activeIds.size <= MaxActiveHabits || activeIds != expectedActiveIds ||
+            keepId !in activeIds
+        ) {
+            throw HabitOperationException.ActiveHabitsChanged()
+        }
+        (activeIds - keepId).forEach { archiveActive(it, archivedAt) }
+    }
+
+    private suspend fun archiveActive(id: String, archivedAt: ZonedDateTime) {
+        dao.archive(id, archivedAt.toInstant().toEpochMilli())
+        database.habitHistoryDao().deleteUncompletedSchedulesAfter(
+            id,
+            archivedAt.toLocalDate().toEpochDay()
+        )
+    }
 
     override suspend fun getPendingSchedules(throughDate: LocalDate): List<HabitScheduleProgress> =
         dao.getPendingSchedules(throughDate.toEpochDay()).map {
@@ -66,5 +109,9 @@ class RoomHabitRepository @Inject constructor(
             dao.updateScheduleProgress(progress.habit.id, throughDate.toEpochDay())
             true
         }
+    }
+
+    private companion object {
+        const val MaxActiveHabits = 1
     }
 }

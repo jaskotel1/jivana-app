@@ -10,6 +10,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -164,6 +166,17 @@ class HabitUseCasesTest {
         }
 
         override suspend fun getById(id: String): Habit? = habits[id]
+
+        override fun observeActiveHabits(): Flow<List<Habit>> = error("Not exercised here")
+
+        override suspend fun archive(id: String, archivedAt: ZonedDateTime): Habit =
+            error("Not exercised here")
+
+        override suspend fun resolveActiveHabitConflict(
+            keepId: String,
+            expectedActiveIds: Set<String>,
+            archivedAt: ZonedDateTime
+        ): Unit = error("Not exercised here")
 
         override suspend fun getPendingSchedules(
             throughDate: LocalDate

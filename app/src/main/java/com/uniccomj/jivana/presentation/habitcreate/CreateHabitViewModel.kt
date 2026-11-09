@@ -4,6 +4,7 @@ import android.database.sqlite.SQLiteException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.HabitValidationError
 import com.uniccomj.jivana.domain.usecase.HabitValidationException
@@ -40,13 +41,13 @@ class CreateHabitViewModel @Inject constructor(
         if (state.value.saving || state.value.saved) return
         savedState[NameKey] = value
         mutableState.value =
-            state.value.copy(name = value, nameRequired = false, saveFailed = false)
+            state.value.copy(name = value, nameRequired = false, saveFailure = null)
     }
 
     fun updateDescription(value: String) {
         if (state.value.saving || state.value.saved) return
         savedState[DescriptionKey] = value
-        mutableState.value = state.value.copy(description = value, saveFailed = false)
+        mutableState.value = state.value.copy(description = value, saveFailure = null)
     }
 
     fun selectEveryDay(everyDay: Boolean) {
@@ -57,7 +58,7 @@ class CreateHabitViewModel @Inject constructor(
             everyDay = everyDay,
             scheduledDays = if (everyDay) DayOfWeek.entries.toSet() else state.value.scheduledDays,
             daysRequired = false,
-            saveFailed = false
+            saveFailure = null
         )
     }
 
@@ -66,7 +67,7 @@ class CreateHabitViewModel @Inject constructor(
         val days = state.value.scheduledDays.let { if (day in it) it - day else it + day }
         savedState[DaysKey] = days.fold(0) { mask, selected -> mask or (1 shl selected.ordinal) }
         mutableState.value =
-            state.value.copy(scheduledDays = days, daysRequired = false, saveFailed = false)
+            state.value.copy(scheduledDays = days, daysRequired = false, saveFailure = null)
     }
 
     fun save() {
@@ -77,7 +78,7 @@ class CreateHabitViewModel @Inject constructor(
                 saving = true,
                 nameRequired = false,
                 daysRequired = false,
-                saveFailed = false
+                saveFailure = null
             )
         viewModelScope.launch {
             try {
@@ -90,16 +91,20 @@ class CreateHabitViewModel @Inject constructor(
                     nameRequired = error.error == HabitValidationError.NAME_REQUIRED,
                     daysRequired = error.error == HabitValidationError.DAYS_REQUIRED
                 )
+            } catch (_: HabitOperationException.ActiveHabitLimitReached) {
+                showSaveFailure(HabitSaveFailure.ACTIVE_HABIT)
+            } catch (_: HabitOperationException.RequestTokenConflict) {
+                showSaveFailure(HabitSaveFailure.REQUEST_TOKEN)
             } catch (_: IOException) {
-                showSaveFailure()
+                showSaveFailure(HabitSaveFailure.STORAGE)
             } catch (_: SQLiteException) {
-                showSaveFailure()
+                showSaveFailure(HabitSaveFailure.STORAGE)
             }
         }
     }
 
-    private fun showSaveFailure() {
-        mutableState.value = state.value.copy(saving = false, saveFailed = true)
+    private fun showSaveFailure(failure: HabitSaveFailure) {
+        mutableState.value = state.value.copy(saving = false, saveFailure = failure)
     }
 
     private fun decodeDays(mask: Int): Set<DayOfWeek> =

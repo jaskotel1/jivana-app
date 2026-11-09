@@ -23,6 +23,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.presentation.avatar.JiveConditionViewModel
+import com.uniccomj.jivana.presentation.home.HabitManagementViewModel
 import com.uniccomj.jivana.presentation.navigation.AppNavHost
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ import kotlinx.coroutines.launch
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val jiveConditionViewModel: JiveConditionViewModel by viewModels()
+    private val habitManagementViewModel: HabitManagementViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,7 +56,8 @@ class MainActivity : ComponentActivity() {
                         AppNavHost(
                             jiveCondition = jiveCondition,
                             jiveReactions = jiveConditionViewModel.reactions,
-                            createHabitFactory = defaultViewModelProviderFactory
+                            createHabitFactory = defaultViewModelProviderFactory,
+                            habitManagement = habitManagementViewModel
                         )
                     }
                 }
