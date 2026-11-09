@@ -83,9 +83,14 @@ fun CreateHabitScreen(
             stringResource(R.string.habit_starts_today),
             style = MaterialTheme.typography.bodyMedium
         )
-        if (state.saveFailed) {
+        state.saveFailure?.let { failure ->
+            val message = when (failure) {
+                HabitSaveFailure.ACTIVE_HABIT -> R.string.habit_active_limit
+                HabitSaveFailure.REQUEST_TOKEN -> R.string.habit_token_conflict
+                HabitSaveFailure.STORAGE -> R.string.habit_save_error
+            }
             Text(
-                stringResource(R.string.habit_save_error),
+                stringResource(message),
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.testTag("habit_save_error")
             )

@@ -3,6 +3,7 @@ package com.uniccomj.jivana.presentation.habitcreate
 import androidx.lifecycle.SavedStateHandle
 import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitSchedule
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.HabitValidationError
 import com.uniccomj.jivana.domain.usecase.HabitValidationException
@@ -74,7 +75,7 @@ class CreateHabitViewModelTest {
             vm.toggleDay(DayOfWeek.SUNDAY)
             vm.save()
             advanceUntilIdle()
-            assertTrue(vm.state.value.saveFailed)
+            assertEquals(HabitSaveFailure.STORAGE, vm.state.value.saveFailure)
             assertFalse(vm.state.value.saving)
             assertEquals("Notes", vm.state.value.description)
             assertFalse(DayOfWeek.SUNDAY in vm.state.value.scheduledDays)
@@ -84,6 +85,23 @@ class CreateHabitViewModelTest {
             assertEquals(tokens.first(), tokens.last())
             assertTrue(vm.state.value.saved)
         }
+
+    @Test
+    fun `habit limit and token conflicts show distinct errors`() = runTest(dispatcher) {
+        val vm = CreateHabitViewModel(create, SavedStateHandle())
+        vm.updateName("Water")
+        coEvery { create(any(), any(), any(), any()) } throws
+            HabitOperationException.ActiveHabitLimitReached()
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(HabitSaveFailure.ACTIVE_HABIT, vm.state.value.saveFailure)
+        coEvery { create(any(), any(), any(), any()) } throws
+            HabitOperationException.RequestTokenConflict()
+        vm.save()
+        advanceUntilIdle()
+        assertEquals(HabitSaveFailure.REQUEST_TOKEN, vm.state.value.saveFailure)
+        assertEquals("Water", vm.state.value.name)
+    }
 
     @Test
     fun `saved handle restores text selected days frequency and request identity`() =

@@ -109,20 +109,27 @@ class RoomHabitRepositoryTest {
         val daily = create.createWithSchedule("Water", "", HabitSchedule.Daily)
         assertEquals(daily, repository.getById(daily.id))
         val baseline = history.observeDailyPerformance(start).first()
+        val end = start.plusWeeks(2)
+        val archiveTime = end.atTime(12, 0).atZone(ZoneOffset.UTC)
+        val ensure = EnsureHabitSchedulesUseCase(
+            repository,
+            Clock.fixed(archiveTime.toInstant(), archiveTime.zone)
+        )
+        assertEquals(listOf(daily), repository.getPendingSchedules(end).map { it.habit })
+        ensure()
+        repository.archive(daily.id, archiveTime)
         val weeklyHabits = listOf(1, 3, 7).map { goal ->
             val schedule = HabitSchedule.WeeklyTarget(goal)
             val habit = create.createWithSchedule("Exercise", "", schedule, "weekly-$goal")
             assertEquals(habit, repository.getById(habit.id))
             assertEquals(schedule, repository.getById(habit.id)?.schedule)
             assertEquals(habit, create.createWithSchedule("Exercise", "", schedule, "weekly-$goal"))
+            assertTrue(repository.getPendingSchedules(end).isEmpty())
+            assertEquals(false, ensure())
+            repository.archive(habit.id, archiveTime)
             habit
         }
         assertEquals(baseline, history.observeDailyPerformance(start).first())
-
-        val end = start.plusWeeks(2)
-        val endClock = Clock.fixed(end.atTime(12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
-        assertEquals(listOf(daily), repository.getPendingSchedules(end).map { it.habit })
-        EnsureHabitSchedulesUseCase(repository, endClock)()
 
         val performance = database.habitHistoryDao()
             .observeDailyPerformance(start.toEpochDay(), end.toEpochDay()).first()
@@ -138,7 +145,9 @@ class RoomHabitRepositoryTest {
     fun invalidScheduleCombinationsCannotBeStored() = runTest {
         val create = CreateHabitUseCase(repository, startClock)
         val daily = create.createWithSchedule("Water", "", HabitSchedule.Daily)
+        repository.archive(daily.id, start.atStartOfDay(ZoneOffset.UTC))
         val weekly = create.createWithSchedule("Exercise", "", HabitSchedule.WeeklyTarget(3))
+        repository.archive(weekly.id, start.atStartOfDay(ZoneOffset.UTC))
         val dailyEntity = database.habitDao().getById(daily.id)!!
         val weeklyEntity = database.habitDao().getById(weekly.id)!!
         val invalidDaily = runCatching {
@@ -154,7 +163,7 @@ class RoomHabitRepositoryTest {
         }
         assertTrue(invalidDaily.exceptionOrNull() is IllegalArgumentException)
         assertTrue(invalidWeekly.exceptionOrNull() is IllegalArgumentException)
-        assertTrue(invalidPlan.exceptionOrNull() is IllegalArgumentException)
+        assertEquals(IllegalArgumentException::class.java, invalidPlan.exceptionOrNull()?.javaClass)
         assertTrue(repository.getById("invalid-daily") == null)
         assertTrue(repository.getById("invalid-weekly") == null)
         assertTrue(repository.getById("invalid-plan") == null)

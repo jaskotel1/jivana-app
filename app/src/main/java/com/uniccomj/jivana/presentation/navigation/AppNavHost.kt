@@ -1,11 +1,13 @@
 package com.uniccomj.jivana.presentation.navigation
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -21,6 +23,9 @@ import com.uniccomj.jivana.domain.model.JiveCondition
 import com.uniccomj.jivana.domain.model.JiveReaction
 import com.uniccomj.jivana.presentation.habitcreate.CreateHabitRoute
 import com.uniccomj.jivana.presentation.habitcreate.CreateHabitViewModel
+import com.uniccomj.jivana.presentation.home.AddHabitButton
+import com.uniccomj.jivana.presentation.home.HabitManagementPanel
+import com.uniccomj.jivana.presentation.home.HabitManagementViewModel
 import com.uniccomj.jivana.presentation.home.HomeScreen
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
@@ -32,7 +37,8 @@ fun AppNavHost(
     navController: NavHostController = rememberNavController(),
     startDestination: AppDestination = AppDestination.Home,
     jiveReactions: Flow<JiveReaction> = emptyFlow(),
-    createHabitFactory: ViewModelProvider.Factory? = null
+    createHabitFactory: ViewModelProvider.Factory? = null,
+    habitManagement: HabitManagementViewModel? = null
 ) {
     NavHost(
         navController = navController,
@@ -40,20 +46,30 @@ fun AppNavHost(
         modifier = modifier
     ) {
         composable(AppDestination.Home.route) {
-            Box(Modifier.fillMaxSize()) {
+            val openCreateHabit = {
+                navController.navigate(AppDestination.CreateHabit.route) { launchSingleTop = true }
+            }
+            Column(Modifier.fillMaxSize()) {
                 HomeScreen(
                     condition = jiveCondition,
-                    reactions = jiveReactions,
-                    onCreateHabit = {
-                        navController.navigate(AppDestination.CreateHabit.route) {
-                            launchSingleTop =
-                                true
-                        }
+                    modifier = Modifier.weight(1f),
+                    reactions = jiveReactions
+                ) {
+                    if (habitManagement == null) {
+                        AddHabitButton(openCreateHabit)
+                    } else {
+                        val state by habitManagement.state.collectAsState()
+                        HabitManagementPanel(
+                            state = state,
+                            onCreateHabit = openCreateHabit,
+                            onArchive = habitManagement::archive,
+                            onResolveConflict = habitManagement::resolveConflict
+                        )
                     }
-                )
+                }
                 DevelopmentHomeAction(
                     navController = navController,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(16.dp)
                 )
             }
         }

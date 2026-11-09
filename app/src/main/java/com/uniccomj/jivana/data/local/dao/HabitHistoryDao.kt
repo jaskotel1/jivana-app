@@ -154,6 +154,17 @@ abstract class HabitHistoryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertSchedules(schedules: List<HabitScheduleEntity>)
 
+    @Query(
+        """
+        DELETE FROM habit_schedules
+        WHERE habitId = :habitId AND dateEpochDay > :lastActiveEpochDay
+          AND dateEpochDay NOT IN (
+              SELECT dateEpochDay FROM habit_completions WHERE habitId = :habitId
+          )
+        """
+    )
+    abstract suspend fun deleteUncompletedSchedulesAfter(habitId: String, lastActiveEpochDay: Long)
+
     @Transaction
     open suspend fun setHabitCompleted(
         habitId: String,
