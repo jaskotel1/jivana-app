@@ -1,6 +1,7 @@
 package com.uniccomj.jivana.domain.usecase
 
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import java.time.Clock
 import java.time.DayOfWeek
@@ -18,6 +19,29 @@ class CreateHabitUseCase(private val repository: HabitRepository, private val cl
         description: String,
         scheduledDays: Set<DayOfWeek>,
         requestToken: String = UUID.randomUUID().toString()
+    ): Habit = create(name, description, requestToken) {
+        if (scheduledDays.isEmpty()) {
+            throw HabitValidationException(HabitValidationError.DAYS_REQUIRED)
+        }
+        if (scheduledDays.size == DayOfWeek.entries.size) {
+            HabitSchedule.Daily
+        } else {
+            HabitSchedule.LegacyWeekdays(scheduledDays.toSet())
+        }
+    }
+
+    suspend fun createWithSchedule(
+        name: String,
+        description: String,
+        schedule: HabitSchedule,
+        requestToken: String = UUID.randomUUID().toString()
+    ): Habit = create(name, description, requestToken) { schedule }
+
+    private suspend fun create(
+        name: String,
+        description: String,
+        requestToken: String,
+        resolveSchedule: () -> HabitSchedule
     ): Habit {
         val normalizedName = name.trim().replace(Whitespace, " ")
         if (normalizedName.isBlank()) {
@@ -25,21 +49,17 @@ class CreateHabitUseCase(private val repository: HabitRepository, private val cl
                 HabitValidationError.NAME_REQUIRED
             )
         }
-        if (scheduledDays.isEmpty()) {
-            throw HabitValidationException(
-                HabitValidationError.DAYS_REQUIRED
-            )
-        }
+        val schedule = resolveSchedule()
         require(requestToken.isNotBlank())
         val today = LocalDate.now(clock)
         val habit = Habit(
             id = UUID.nameUUIDFromBytes(requestToken.toByteArray(Charsets.UTF_8)).toString(),
             name = normalizedName,
             description = description.trim().takeIf(String::isNotEmpty),
-            scheduledDays = scheduledDays.toSet(),
+            schedule = schedule,
             startDate = today
         )
-        val initialDates = if (today.dayOfWeek in scheduledDays) setOf(today) else emptySet()
+        val initialDates = if (schedule.isPlannedOn(today.dayOfWeek)) setOf(today) else emptySet()
         return repository.create(habit, initialDates)
     }
 

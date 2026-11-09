@@ -2,6 +2,7 @@ package com.uniccomj.jivana.data.repository
 
 import androidx.room.withTransaction
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
+import com.uniccomj.jivana.data.local.entity.HabitScheduleType
 import com.uniccomj.jivana.data.mapper.toDomain
 import com.uniccomj.jivana.data.mapper.toEntity
 import com.uniccomj.jivana.domain.model.Habit
@@ -23,20 +24,20 @@ class RoomHabitRepository @Inject constructor(
             if (existing != null) {
                 require(
                     existing.name == habit.name && existing.description == habit.description &&
-                        existing.scheduledDays == habit.scheduledDays
+                        existing.schedule == habit.schedule
                 ) {
                     "Request token already used for another habit"
                 }
                 existing
             } else {
-                val expectedDates = if (habit.startDate.dayOfWeek in habit.scheduledDays) {
+                val expectedDates = if (habit.schedule.isPlannedOn(habit.startDate.dayOfWeek)) {
                     setOf(habit.startDate)
                 } else {
                     emptySet()
                 }
                 require(initialDates == expectedDates)
                 dao.insert(habit.toEntity(scheduledThrough = habit.startDate))
-                history.scheduleHabit(habit.id, initialDates)
+                if (initialDates.isNotEmpty()) history.scheduleHabit(habit.id, initialDates)
                 habit
             }
         }
@@ -53,10 +54,10 @@ class RoomHabitRepository @Inject constructor(
         throughDate: LocalDate,
         dates: Set<LocalDate>
     ): Boolean = database.withTransaction {
-        val current = dao.getById(progress.habit.id)
-        if (current == null ||
-            current.scheduledThroughEpochDay != progress.scheduledThrough.toEpochDay() ||
-            current.archivedAtEpochMillis != null
+        val current = dao.getById(progress.habit.id) ?: return@withTransaction false
+        if (current.scheduledThroughEpochDay != progress.scheduledThrough.toEpochDay() ||
+            current.archivedAtEpochMillis != null ||
+            current.scheduleType == HabitScheduleType.WEEKLY_TARGET
         ) {
             false
         } else {

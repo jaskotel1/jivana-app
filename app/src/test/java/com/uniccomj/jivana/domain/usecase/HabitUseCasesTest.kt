@@ -1,6 +1,7 @@
 package com.uniccomj.jivana.domain.usecase
 
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.model.HabitScheduleProgress
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import java.time.Clock
@@ -13,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -35,8 +37,25 @@ class HabitUseCasesTest {
         assertFalse(first.id == second.id)
         assertEquals(LocalDate.of(2026, 11, 5), first.startDate)
         assertEquals(setOf(first.startDate), repository.dates.getValue(first.id))
-        assertEquals(DayOfWeek.entries.toSet(), first.scheduledDays)
+        assertEquals(HabitSchedule.Daily, first.schedule)
         assertNull(first.archivedAt)
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [1, 3, 7])
+    fun `weekly goals have no day based schedule`(goal: Int) = runTest {
+        val schedule = HabitSchedule.WeeklyTarget(goal)
+        val habit = create.createWithSchedule("Exercise", "", schedule)
+        assertEquals(schedule, repository.getById(habit.id)?.schedule)
+        clock.current = Instant.parse("2026-11-16T12:00:00Z")
+        assertFalse(ensure())
+        assertTrue(repository.dates.getValue(habit.id).isEmpty())
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = [0, 8])
+    fun `weekly goals outside the allowed range are rejected`(goal: Int) {
+        assertThrows(IllegalArgumentException::class.java) { HabitSchedule.WeeklyTarget(goal) }
     }
 
     @ParameterizedTest
@@ -148,9 +167,9 @@ class HabitUseCasesTest {
 
         override suspend fun getPendingSchedules(
             throughDate: LocalDate
-        ): List<HabitScheduleProgress> =
-            habits.values.filter { cursors.getValue(it.id) < throughDate }
-                .map { HabitScheduleProgress(it, cursors.getValue(it.id)) }
+        ): List<HabitScheduleProgress> = habits.values.filter {
+            it.schedule !is HabitSchedule.WeeklyTarget && cursors.getValue(it.id) < throughDate
+        }.map { HabitScheduleProgress(it, cursors.getValue(it.id)) }
 
         override suspend fun advanceSchedule(
             progress: HabitScheduleProgress,

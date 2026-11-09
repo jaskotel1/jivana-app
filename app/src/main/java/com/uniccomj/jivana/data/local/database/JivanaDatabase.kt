@@ -16,7 +16,7 @@ import com.uniccomj.jivana.data.local.entity.HabitScheduleEntity
         HabitDayInteractionEntity::class,
         HabitEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class JivanaDatabase : RoomDatabase() {

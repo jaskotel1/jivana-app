@@ -2,6 +2,7 @@ package com.uniccomj.jivana.presentation.habitcreate
 
 import androidx.lifecycle.SavedStateHandle
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.HabitValidationError
 import com.uniccomj.jivana.domain.usecase.HabitValidationException
@@ -121,6 +122,5 @@ class CreateHabitViewModelTest {
         assertTrue(vm.state.value.daysRequired)
     }
 
-    private fun habit() =
-        Habit("id", "Water", null, DayOfWeek.entries.toSet(), LocalDate.of(2026, 11, 5))
+    private fun habit() = Habit("id", "Water", null, HabitSchedule.Daily, LocalDate.of(2026, 11, 5))
 }
