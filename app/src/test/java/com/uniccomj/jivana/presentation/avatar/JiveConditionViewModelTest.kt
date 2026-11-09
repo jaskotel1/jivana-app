@@ -225,6 +225,12 @@ class JiveConditionViewModelTest {
 
         override suspend fun scheduleHabit(habitId: String, dates: Set<LocalDate>) = Unit
 
+        override fun observeCompletedDates(
+            habitId: String,
+            fromDate: LocalDate,
+            throughDate: LocalDate
+        ): Flow<List<LocalDate>> = error("Completion dates are unused by the condition observer")
+
         override suspend fun setHabitCompleted(
             habitId: String,
             date: LocalDate,

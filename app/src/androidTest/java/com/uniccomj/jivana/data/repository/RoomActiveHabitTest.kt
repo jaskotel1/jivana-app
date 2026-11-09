@@ -249,8 +249,12 @@ class RoomActiveHabitTest {
     private fun repository(database: JivanaDatabase) =
         RoomHabitRepository(database, history(database))
 
-    private fun history(database: JivanaDatabase) =
-        RoomHabitHistoryRepository(database, JiveScoringConfig(), HabitCompletionEvents())
+    private fun history(database: JivanaDatabase) = RoomHabitHistoryRepository(
+        database,
+        JiveScoringConfig(),
+        HabitCompletionEvents(),
+        clockOn(archiveDay.plusDays(2))
+    )
 
     private fun clockOn(date: LocalDate): Clock =
         Clock.fixed(date.atTime(12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)

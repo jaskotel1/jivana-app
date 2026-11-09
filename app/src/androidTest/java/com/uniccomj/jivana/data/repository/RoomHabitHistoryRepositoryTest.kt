@@ -10,7 +10,9 @@ import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -40,7 +42,11 @@ class RoomHabitHistoryRepositoryTest {
             RoomHabitHistoryRepository(
                 database,
                 JiveScoringConfig(),
-                completionEvents
+                completionEvents,
+                Clock.fixed(
+                    StartDate.plusYears(1).atStartOfDay(ZoneOffset.UTC).toInstant(),
+                    ZoneOffset.UTC
+                )
             )
     }
 

@@ -43,7 +43,7 @@ class HabitMigrationTest {
         val database = openMigratedDatabase(databaseName)
         try {
             // Opening runs the production migration and Room's generated schema validation.
-            assertEquals(3, database.openHelper.writableDatabase.version)
+            assertEquals(4, database.openHelper.writableDatabase.version)
             database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM habits").use {
                 it.moveToFirst()
                 assertEquals(0, it.getInt(0))
@@ -52,7 +52,8 @@ class HabitMigrationTest {
                 RoomHabitHistoryRepository(
                     database,
                     JiveScoringConfig(),
-                    HabitCompletionEvents()
+                    HabitCompletionEvents(),
+                    clockOn(date)
                 )
             val repository = RoomHabitRepository(database, history)
             assertNull(repository.getById("legacy-no-definition"))
@@ -123,7 +124,7 @@ class HabitMigrationTest {
         }
         val migrated = openMigratedDatabase(name)
         try {
-            assertEquals(3, migrated.openHelper.writableDatabase.version)
+            assertEquals(4, migrated.openHelper.writableDatabase.version)
         } finally {
             migrated.close()
         }
@@ -133,7 +134,8 @@ class HabitMigrationTest {
             val history = RoomHabitHistoryRepository(
                 reopened,
                 JiveScoringConfig(),
-                HabitCompletionEvents()
+                HabitCompletionEvents(),
+                clockOn(start)
             )
             val repository = RoomHabitRepository(reopened, history)
             assertEquals(
@@ -163,6 +165,60 @@ class HabitMigrationTest {
             assertLegacyHistory(reopened, start)
         } finally {
             reopened.close()
+        }
+    }
+
+    @Test
+    fun versionThreePreservesCompletionsAndAllowsWeeklyDatesWithoutPlans() = runTest {
+        val name = "habit-migration-v3-test"
+        val date = LocalDate.of(2026, 11, 2)
+        val epochDay = date.toEpochDay()
+        createLegacyDatabase(name, sourceVersion = 3).use { fixture ->
+            fixture.execSQL(
+                """
+                INSERT INTO habits VALUES
+                ('daily', 'Read', NULL, 127, ?, NULL, ?, 'DAILY', NULL),
+                ('weekly', 'Swim', NULL, 0, ?, NULL, ?, 'WEEKLY_TARGET', 3)
+                """.trimIndent(),
+                arrayOf(epochDay, epochDay, epochDay, epochDay)
+            )
+            for (id in listOf("daily", "orphan")) {
+                val args = arrayOf<Any>(id, epochDay)
+                fixture.execSQL("INSERT INTO habit_schedules VALUES (?, ?)", args)
+                fixture.execSQL(
+                    "INSERT INTO habit_completions VALUES (?, ?)",
+                    args
+                )
+            }
+            fixture.execSQL("INSERT INTO habit_day_interactions VALUES (?)", arrayOf(epochDay))
+        }
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val database = openMigratedDatabase(name)
+        try {
+            assertEquals(4, database.openHelper.writableDatabase.version)
+            val history = RoomHabitHistoryRepository(
+                database,
+                JiveScoringConfig(),
+                HabitCompletionEvents(),
+                clockOn(date)
+            )
+            for (id in listOf("daily", "orphan")) {
+                val dates = history.observeCompletedDates(id, date, date).first()
+                assertEquals(listOf(date), dates)
+            }
+            val before = history.observeDailyPerformance(date).first()
+            assertEquals(2, before.single().plannedHabitCount)
+            assertEquals(2, before.single().completedHabitCount)
+            assertEquals(true, before.single().activityRecorded)
+
+            history.setHabitCompleted("weekly", date, true)
+            val weeklyDates = history.observeCompletedDates("weekly", date, date).first()
+            assertEquals(listOf(date), weeklyDates)
+            assertEquals(before, history.observeDailyPerformance(date).first())
+        } finally {
+            database.close()
+            context.deleteDatabase(name)
         }
     }
 
@@ -196,7 +252,14 @@ class HabitMigrationTest {
         ApplicationProvider.getApplicationContext(),
         JivanaDatabase::class.java,
         name
-    ).addMigrations(JivanaMigrations.Migration1To2, JivanaMigrations.Migration2To3).build()
+    ).addMigrations(
+        JivanaMigrations.Migration1To2,
+        JivanaMigrations.Migration2To3,
+        JivanaMigrations.Migration3To4
+    ).build()
+
+    private fun clockOn(date: LocalDate): Clock =
+        Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
 
     private fun createLegacyDatabase(name: String, sourceVersion: Int): SQLiteDatabase {
         val context = ApplicationProvider.getApplicationContext<Context>()

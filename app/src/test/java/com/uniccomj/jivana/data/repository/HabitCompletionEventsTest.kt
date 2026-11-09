@@ -8,7 +8,9 @@ import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import java.io.IOException
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -24,8 +26,9 @@ class HabitCompletionEventsTest {
         val database = mockk<JivanaDatabase>()
         every { database.habitHistoryDao() } returns dao
         val events = HabitCompletionEvents()
-        val repository = RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
         val date = LocalDate.of(2026, 11, 5)
+        val clock = Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+        val repository = RoomHabitHistoryRepository(database, JiveScoringConfig(), events, clock)
         var completions = 0
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             events.completions.collect { completions++ }
