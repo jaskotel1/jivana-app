@@ -7,8 +7,10 @@ import com.uniccomj.jivana.domain.model.JiveEnergy
 import com.uniccomj.jivana.domain.model.JiveMood
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
+import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.ObserveJiveConditionUseCase
+import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -18,9 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
@@ -101,12 +106,49 @@ class JiveConditionViewModelTest {
         )
     }
 
+    @Test
+    fun `foreground midnight refreshes history without another resume`() = runTest(dispatcher) {
+        val repository = FakeHabitHistoryRepository(emptyList())
+        val clock = MutableClock(Instant.parse("2026-12-31T23:59:59Z"))
+        val vm =
+            createViewModel(repository, JiveConditionController(HabitCompletionEvents()), clock)
+        backgroundScope.launch { vm.refreshWhileResumed() }
+        runCurrent()
+        clock.currentInstant = Instant.parse("2027-01-01T00:00:01Z")
+        advanceTimeBy(1001)
+        runCurrent()
+        assertEquals(LocalDate.of(2027, 1, 1), repository.observedDates.last())
+    }
+
+    @Test
+    fun `foreground zone change refreshes the local date and resume refreshes even on same day`() =
+        runTest(dispatcher) {
+            val repository = FakeHabitHistoryRepository(emptyList())
+            val clock = MutableClock(Instant.parse("2026-11-05T00:30:00Z"))
+            val vm =
+                createViewModel(repository, JiveConditionController(HabitCompletionEvents()), clock)
+            backgroundScope.launch { vm.refreshWhileResumed() }
+            runCurrent()
+            clock.zoneId = ZoneId.of("America/Los_Angeles")
+            advanceTimeBy(60_001)
+            runCurrent()
+            assertEquals(LocalDate.of(2026, 11, 4), repository.observedDates.last())
+            val count = repository.observedDates.size
+            vm.refreshForCurrentDay()
+            runCurrent()
+            assertEquals(count + 1, repository.observedDates.size)
+        }
+
     private fun createViewModel(
         repository: HabitHistoryRepository,
         controller: JiveConditionController,
         clock: Clock = FixedClock
     ) = JiveConditionViewModel(
-        observeJiveCondition = ObserveJiveConditionUseCase(repository, JiveConditionScorer()),
+        observeJiveCondition = ObserveJiveConditionUseCase(
+            repository,
+            JiveConditionScorer(),
+            mockk<EnsureHabitSchedulesUseCase>(relaxed = true)
+        ),
         controller = controller,
         clock = clock
     )
@@ -148,10 +190,8 @@ class JiveConditionViewModelTest {
         override suspend fun recordDailyCheckIn(date: LocalDate) = Unit
     }
 
-    private class MutableClock(
-        var currentInstant: Instant,
-        private val zoneId: ZoneId = ZoneOffset.UTC
-    ) : Clock() {
+    private class MutableClock(var currentInstant: Instant, var zoneId: ZoneId = ZoneOffset.UTC) :
+        Clock() {
         override fun getZone(): ZoneId = zoneId
 
         override fun withZone(zone: ZoneId): Clock = MutableClock(currentInstant, zone)

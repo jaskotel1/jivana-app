@@ -3,4 +3,27 @@
     <string name="habits_title">Nawyki</string>
     <string name="avatar_title">Avatar</string>
     <string name="settings_title">Ustawienia</string>
+    <string name="habit_create_title">Dodaj nawyk</string>
+    <string name="habit_name">Nazwa nawyku</string>
+    <string name="habit_name_example">Pić 2 litry wody</string>
+    <string name="habit_description">Opis (opcjonalny)</string>
+    <string name="habit_frequency">Częstotliwość</string>
+    <string name="habit_every_day">Codziennie</string>
+    <string name="habit_selected_days">Wybrane dni</string>
+    <string name="habit_starts_today">Rozpoczęcie od dzisiaj. Nawyk zaplanowany jest na wybrane dni tygodnia.</string>
+    <string name="habit_save">Zapisz nawyk</string>
+    <string name="habit_saving">Zapisywanie…</string>
+    <string name="habit_cancel">Anuluj</string>
+    <string name="habit_name_required">Podaj nazwę nawyku.</string>
+    <string name="habit_days_required">Wybierz co najmniej jeden dzień.</string>
+    <string name="habit_save_error">Nie udało się zapisać nawyku. Wprowadzone dane zostały zachowane. Spróbuj ponownie.</string>
+    <string name="habit_schedule_error">Nie udało się zaktualizować harmonogramu nawyków. Spróbuj ponownie.</string>
+    <string name="habit_retry">Spróbuj ponownie</string>
+    <string-array name="habit_weekdays_short">
+        <item>Pn</item><item>Wt</item><item>Śr</item><item>Cz</item><item>Pt</item><item>Sb</item><item>Nd</item>
+    </string-array>
+    <string-array name="habit_weekdays_full">
+        <item>Poniedziałek</item><item>Wtorek</item><item>Środa</item><item>Czwartek</item>
+        <item>Piątek</item><item>Sobota</item><item>Niedziela</item>
+    </string-array>
 </resources>
