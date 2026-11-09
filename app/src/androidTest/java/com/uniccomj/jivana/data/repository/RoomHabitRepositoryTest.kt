@@ -6,6 +6,7 @@ import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.HabitCompletionEvents
 import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
@@ -118,7 +119,7 @@ class RoomHabitRepositoryTest {
         assertEquals(listOf(daily), repository.getPendingSchedules(end).map { it.habit })
         ensure()
         repository.archive(daily.id, archiveTime)
-        val weeklyHabits = listOf(1, 3, 7).map { goal ->
+        val weeklyHabits = (1..7).map { goal ->
             val schedule = HabitSchedule.WeeklyTarget(goal)
             val habit = create.createWithSchedule("Exercise", "", schedule, "weekly-$goal")
             assertEquals(habit, repository.getById(habit.id))
@@ -139,6 +140,34 @@ class RoomHabitRepositoryTest {
             val entity = database.habitDao().getById(weekly.id)!!
             assertEquals(start.toEpochDay(), entity.scheduledThroughEpochDay)
         }
+    }
+
+    @Test
+    fun explicitStartAndInitialPlanCommitOnlyOnceAndStayOutsideEarlierHistory() = runTest {
+        val create = CreateHabitUseCase(repository, startClock)
+        val future = start.plusDays(3)
+        val results = List(3) {
+            async {
+                create.createWithSchedule("Water", "", HabitSchedule.Daily, "same-token", future)
+            }
+        }.awaitAll()
+        val habit = results.toSet().single()
+        assertEquals(future, repository.getById(habit.id)?.startDate)
+        assertTrue(history.observeDailyPerformance(start).first().isEmpty())
+        assertEquals(1, history.observeDailyPerformance(future).first().single().plannedHabitCount)
+        assertEquals(null, database.habitDao().getById(habit.id)?.weeklyTarget)
+
+        val changedDate = runCatching {
+            create.createWithSchedule(
+                "Water",
+                "",
+                HabitSchedule.Daily,
+                "same-token",
+                future.plusDays(1)
+            )
+        }
+        assertTrue(changedDate.exceptionOrNull() is HabitOperationException.RequestTokenConflict)
+        assertEquals(habit, repository.getById(habit.id))
     }
 
     @Test

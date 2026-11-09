@@ -26,62 +26,64 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.uniccomj.jivana.R
-import java.time.DayOfWeek
+import com.uniccomj.jivana.domain.model.HabitSchedule
+import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
+import com.uniccomj.jivana.domain.usecase.HabitValidationError
 
 @Composable
 fun CreateHabitRoute(viewModel: CreateHabitViewModel, onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
+    var expandedCategory by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
-    BackHandler(enabled = state.saving) {
-        /* Keep the transaction and its visible result together. */
+    BackHandler(enabled = state.configuring) {
+        viewModel.returnToCatalog()
     }
-    CreateHabitScreen(
-        state = state,
-        onNameChange = viewModel::updateName,
-        onDescriptionChange = viewModel::updateDescription,
-        onFrequencyChange = viewModel::selectEveryDay,
-        onDayClick = viewModel::toggleDay,
-        onSave = viewModel::save,
-        onBack = onBack
-    )
+    if (state.configuring) {
+        CreateHabitForm(state, viewModel)
+    } else {
+        HabitCatalogScreen(
+            expandedCategory = expandedCategory,
+            onCategoryClick = { expandedCategory = it.takeUnless { it == expandedCategory } },
+            onTemplateClick = viewModel::openForm,
+            onCustomClick = { viewModel.openForm() },
+            onBack = onBack
+        )
+    }
 }
 
 @Composable
-fun CreateHabitScreen(
-    state: CreateHabitUiState,
-    onNameChange: (String) -> Unit,
-    onDescriptionChange: (String) -> Unit,
-    onFrequencyChange: (Boolean) -> Unit,
-    onDayClick: (DayOfWeek) -> Unit,
-    onSave: () -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun CreateHabitForm(state: CreateHabitUiState, viewModel: CreateHabitViewModel) {
+    val focus = LocalFocusManager.current
+    val scroll = rememberScrollState()
+    LaunchedEffect(state.validationError) {
+        if (state.validationError != null) scroll.scrollTo(0)
+    }
     Column(
-        modifier = modifier.fillMaxSize().imePadding().verticalScroll(
-            rememberScrollState()
-        ).padding(24.dp),
+        modifier = Modifier.fillMaxSize().imePadding().verticalScroll(scroll).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
             stringResource(R.string.habit_create_title),
             style = MaterialTheme.typography.headlineSmall
         )
-        HabitTextFields(state, onNameChange, onDescriptionChange)
-        HabitFrequency(state, onFrequencyChange, onDayClick)
-        Text(
-            stringResource(R.string.habit_starts_today),
-            style = MaterialTheme.typography.bodyMedium
+        HabitTextFields(state, viewModel::updateName, viewModel::updateDescription)
+        HabitFrequency(state, viewModel::selectWeekly, viewModel::selectWeeklyTarget)
+        HabitStartDate(
+            selectedDate = state.startDate,
+            enabled = state.canEdit,
+            today = viewModel.today,
+            onDateChange = viewModel::updateStartDate
         )
         state.saveFailure?.let { failure ->
             val message = when (failure) {
@@ -96,8 +98,11 @@ fun CreateHabitScreen(
             )
         }
         Button(
-            onClick = onSave,
-            enabled = !state.saving && !state.saved,
+            onClick = {
+                focus.clearFocus()
+                viewModel.save()
+            },
+            enabled = state.canEdit,
             modifier = Modifier.fillMaxWidth().testTag("habit_save")
         ) {
             if (state.saving) {
@@ -109,11 +114,11 @@ fun CreateHabitScreen(
             Text(stringResource(if (state.saving) R.string.habit_saving else R.string.habit_save))
         }
         TextButton(
-            onClick = onBack,
-            enabled = !state.saving,
+            onClick = viewModel::returnToCatalog,
+            enabled = state.canEdit,
             modifier = Modifier.testTag("habit_cancel")
         ) {
-            Text(stringResource(R.string.habit_cancel))
+            Text(stringResource(R.string.habit_catalog_back))
         }
     }
 }
@@ -124,17 +129,25 @@ private fun HabitTextFields(
     onNameChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit
 ) {
+    val nameError = when (state.validationError) {
+        HabitValidationError.NAME_REQUIRED -> stringResource(R.string.habit_name_required)
+
+        HabitValidationError.NAME_TOO_LONG -> stringResource(
+            R.string.habit_name_too_long,
+            CreateHabitUseCase.MaxNameLength
+        )
+
+        else -> null
+    }
     OutlinedTextField(
         value = state.name,
         onValueChange = onNameChange,
         label = { Text(stringResource(R.string.habit_name)) },
         placeholder = { Text(stringResource(R.string.habit_name_example)) },
         singleLine = true,
-        enabled = !state.saving,
-        isError = state.nameRequired,
-        supportingText = {
-            if (state.nameRequired) Text(stringResource(R.string.habit_name_required))
-        },
+        enabled = state.canEdit,
+        isError = nameError != null,
+        supportingText = { nameError?.let { Text(it) } },
         modifier = Modifier.fillMaxWidth().testTag("habit_name")
     )
     OutlinedTextField(
@@ -142,7 +155,7 @@ private fun HabitTextFields(
         onValueChange = onDescriptionChange,
         label = { Text(stringResource(R.string.habit_description)) },
         minLines = 3,
-        enabled = !state.saving,
+        enabled = state.canEdit,
         modifier = Modifier.fillMaxWidth().testTag("habit_description")
     )
 }
@@ -151,54 +164,52 @@ private fun HabitTextFields(
 private fun HabitFrequency(
     state: CreateHabitUiState,
     onFrequencyChange: (Boolean) -> Unit,
-    onDayClick: (DayOfWeek) -> Unit
+    onTargetChange: (Int) -> Unit
 ) {
     Text(stringResource(R.string.habit_frequency), style = MaterialTheme.typography.titleMedium)
     Column(Modifier.selectableGroup()) {
-        listOf(true, false).forEach { everyDay ->
+        listOf(false, true).forEach { weekly ->
             Row(
-                Modifier.fillMaxWidth().testTag(if (everyDay) "habit_daily" else "habit_weekly")
+                Modifier.fillMaxWidth().testTag(if (weekly) "habit_weekly" else "habit_daily")
                     .selectable(
-                        selected = state.everyDay == everyDay,
-                        enabled = !state.saving,
+                        selected = state.weekly == weekly,
+                        enabled = state.canEdit,
                         role = Role.RadioButton,
-                        onClick = { onFrequencyChange(everyDay) }
+                        onClick = { onFrequencyChange(weekly) }
                     ).padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
-                    selected = state.everyDay == everyDay,
+                    selected = state.weekly == weekly,
                     onClick = null,
-                    enabled = !state.saving
+                    enabled = state.canEdit
                 )
                 Text(
                     stringResource(
-                        if (everyDay) R.string.habit_every_day else R.string.habit_selected_days
+                        if (weekly) R.string.habit_weekly_target else R.string.habit_every_day
                     )
                 )
             }
         }
     }
-    if (!state.everyDay) {
-        val shortNames = stringArrayResource(R.array.habit_weekdays_short)
-        val fullNames = stringArrayResource(R.array.habit_weekdays_full)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            DayOfWeek.entries.forEach { day ->
-                FilterChip(
-                    selected = day in state.scheduledDays,
-                    onClick = { onDayClick(day) },
-                    enabled = !state.saving,
-                    label = { Text(shortNames[day.ordinal]) },
-                    modifier = Modifier.testTag("habit_day_${day.name}")
-                        .semantics { contentDescription = fullNames[day.ordinal] }
-                )
-            }
-        }
+    if (state.weekly) {
+        WeeklyGoal(state.weeklyTarget, state.canEdit, onTargetChange)
     }
-    if (state.daysRequired) {
-        Text(
-            stringResource(R.string.habit_days_required),
-            color = MaterialTheme.colorScheme.error
-        )
+}
+
+@Composable
+private fun WeeklyGoal(target: Int, enabled: Boolean, onTargetChange: (Int) -> Unit) {
+    Text(stringResource(R.string.habit_weekly_goal), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(R.string.habit_weekly_goal_hint))
+    FlowRow(Modifier.selectableGroup(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        for (goal in HabitSchedule.WeeklyTarget.AllowedTargets) {
+            FilterChip(
+                selected = target == goal,
+                onClick = { onTargetChange(goal) },
+                enabled = enabled,
+                label = { Text(stringResource(R.string.habit_weekly_goal_number, goal)) },
+                modifier = Modifier.testTag("habit_target_$goal")
+            )
+        }
     }
 }

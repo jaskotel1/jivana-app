@@ -400,6 +400,83 @@ Keep commits focused and descriptive.
 
 Do not commit generated build files or IDE-specific temporary files.
 
+### GitHub Pull Request Workflow — Mandatory
+
+Every implementation task that modifies repository files MUST end with a GitHub Pull Request.
+
+1. Always create a dedicated feature branch from the latest `develop`, using the naming convention `feature/JIV-XX-short-description`.
+2. Never implement new tasks directly on `develop` or `main`.
+3. After implementation, run all relevant tests, formatting checks and static analysis.
+4. Commit all changes related to the task using a descriptive commit message.
+5. Push the feature branch to the remote GitHub repository.
+6. Create a Pull Request targeting `develop`.
+7. Include the following information in the PR description.
+   - Linear issue ID and task summary.
+   - Implemented changes.
+   - Architecture and database changes.
+   - Tests executed and their results.
+   - Known limitations or risks.
+8. Return the GitHub PR URL in the final implementation report.
+9. Never merge the Pull Request automatically unless explicitly instructed by the user.
+
+### Definition of Done
+
+A task is fully delivered once all of the following conditions are met.
+
+- Implementation is completed.
+- Relevant tests and quality checks have been executed.
+- Changes are committed and pushed.
+- A GitHub Pull Request targeting `develop` has been created.
+- The PR URL is included in the final report.
+
+### Mandatory PR Status Reporting
+
+Every implementation report MUST contain a dedicated **GitHub Pull Request Status** section.
+
+Use exactly one of the following statuses.
+
+- `PR CREATED` — GitHub confirmed that the Pull Request was created successfully.
+- `PR BLOCKED` — the Pull Request could not be created.
+
+For `PR CREATED`, include all of the following details.
+
+- Repository name.
+- Feature branch.
+- Target branch.
+- PR number.
+- Full GitHub PR URL.
+- PR state (OPEN or DRAFT).
+
+For `PR BLOCKED`, include all of the following details.
+
+- Exact reason the PR could not be created.
+- Whether changes were committed.
+- Whether the feature branch was pushed.
+- Commands or actions required to resolve the problem.
+
+**Never report `PR CREATED` unless GitHub has confirmed that the PR actually exists.**
+
+Never substitute a local commit, pushed branch or proposed PR description for an actual GitHub Pull Request.
+
+If PR creation is blocked, do not report the task as fully delivered.
+
+### Existing Branch Safety
+
+If a task begins on an existing branch, follow these steps.
+
+1. Inspect the current working tree and branch history.
+2. Check whether the branch contains commits already merged into `develop`.
+3. Avoid including unrelated commits or changes in the new PR.
+4. Preserve all existing uncommitted work.
+5. Never overwrite or discard changes without permission.
+6. Never force-push without explicit approval.
+
+### Final Requirement
+
+Creating a GitHub Pull Request is a mandatory part of every future Jivana implementation task.
+
+Do not stop after local implementation and successful tests when PR creation is possible.
+
 ## Scope control
 
 When implementing a task:

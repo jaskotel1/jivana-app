@@ -44,7 +44,7 @@ class HabitUseCasesTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = [1, 3, 7])
+    @ValueSource(ints = [1, 2, 3, 4, 5, 6, 7])
     fun `weekly goals have no day based schedule`(goal: Int) = runTest {
         val schedule = HabitSchedule.WeeklyTarget(goal)
         val habit = create.createWithSchedule("Exercise", "", schedule)
@@ -64,7 +64,7 @@ class HabitUseCasesTest {
     @ValueSource(strings = ["", "   ", "\n\t"])
     fun `blank names are rejected without writes`(name: String) = runTest {
         try {
-            create(name, "", DayOfWeek.entries.toSet())
+            create.createWithSchedule(name, "", HabitSchedule.Daily)
             error("Expected validation")
         } catch (error: HabitValidationException) {
             assertEquals(HabitValidationError.NAME_REQUIRED, error.error)
@@ -81,6 +81,59 @@ class HabitUseCasesTest {
             assertEquals(HabitValidationError.DAYS_REQUIRED, error.error)
         }
         assertTrue(repository.habits.isEmpty())
+    }
+
+    @Test
+    fun `typed creation validates the normalized name length`() = runTest {
+        val maximum = "a".repeat(CreateHabitUseCase.MaxNameLength)
+        try {
+            create.createWithSchedule(maximum + "a", "", HabitSchedule.Daily)
+            error("Expected validation")
+        } catch (error: HabitValidationException) {
+            assertEquals(HabitValidationError.NAME_TOO_LONG, error.error)
+        }
+        assertTrue(repository.habits.isEmpty())
+        val accepted = create.createWithSchedule("  $maximum  ", "", HabitSchedule.Daily)
+        assertEquals(maximum, accepted.name)
+    }
+
+    @Test
+    fun `explicit future start is preserved and catch up starts there`() = runTest {
+        val start = LocalDate.of(2026, 11, 7)
+        val habit = create.createWithSchedule(
+            "Water",
+            "",
+            HabitSchedule.Daily,
+            "future-start",
+            start
+        )
+        assertEquals(start, habit.startDate)
+        assertEquals(setOf(start), repository.dates.getValue(habit.id))
+        assertFalse(ensure())
+
+        clock.currentZone = ZoneId.of("Asia/Tokyo")
+        clock.current = Instant.parse("2026-11-07T16:00:00Z")
+        val retry = create.createWithSchedule(
+            "Water",
+            "",
+            HabitSchedule.Daily,
+            "future-start",
+            start
+        )
+        assertEquals(habit, retry)
+        assertTrue(ensure())
+        assertFalse(ensure())
+        assertEquals(setOf(start, start.plusDays(1)), repository.dates.getValue(habit.id))
+    }
+
+    @Test
+    fun `default start follows the current local date when a draft is saved`() = runTest {
+        clock.current = Instant.parse("2026-11-05T23:30:00Z")
+        assertEquals(LocalDate.of(2026, 11, 5), create.today())
+        clock.currentZone = ZoneId.of("Europe/Warsaw")
+        val habit = create.createWithSchedule("Water", "", HabitSchedule.Daily)
+        assertEquals(LocalDate.of(2026, 11, 6), habit.startDate)
+        assertEquals(setOf(habit.startDate), repository.dates.getValue(habit.id))
     }
 
     @Test

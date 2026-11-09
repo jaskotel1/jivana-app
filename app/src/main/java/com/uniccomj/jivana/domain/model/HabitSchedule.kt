@@ -7,7 +7,11 @@ sealed interface HabitSchedule {
 
     data class WeeklyTarget(val completionsPerWeek: Int) : HabitSchedule {
         init {
-            require(completionsPerWeek in 1..DayOfWeek.entries.size)
+            require(completionsPerWeek in AllowedTargets)
+        }
+
+        companion object {
+            val AllowedTargets = 1..DayOfWeek.entries.size
         }
     }
 

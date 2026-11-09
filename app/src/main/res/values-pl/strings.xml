@@ -9,13 +9,10 @@
     <string name="habit_description">Opis (opcjonalny)</string>
     <string name="habit_frequency">Częstotliwość</string>
     <string name="habit_every_day">Codziennie</string>
-    <string name="habit_selected_days">Wybrane dni</string>
-    <string name="habit_starts_today">Rozpoczęcie od dzisiaj. Nawyk zaplanowany jest na wybrane dni tygodnia.</string>
     <string name="habit_save">Zapisz nawyk</string>
     <string name="habit_saving">Zapisywanie…</string>
     <string name="habit_cancel">Anuluj</string>
     <string name="habit_name_required">Podaj nazwę nawyku.</string>
-    <string name="habit_days_required">Wybierz co najmniej jeden dzień.</string>
     <string name="habit_save_error">Nie udało się zapisać nawyku. Wprowadzone dane zostały zachowane. Spróbuj ponownie.</string>
     <string name="habit_schedule_error">Nie udało się zaktualizować harmonogramu nawyków. Spróbuj ponownie.</string>
     <string name="habit_retry">Spróbuj ponownie</string>
@@ -29,11 +26,52 @@
     <string name="habit_keep">Zachowaj ten nawyk</string>
     <string name="habit_keep_confirmation">„%1$s” pozostanie aktywny. Pozostałe aktywne nawyki trafią do archiwum wraz z historią.</string>
     <string name="habit_management_error">Nie udało się zaktualizować lub wczytać nawyków. Spróbuj ponownie.</string>
-    <string-array name="habit_weekdays_short">
-        <item>Pn</item><item>Wt</item><item>Śr</item><item>Cz</item><item>Pt</item><item>Sb</item><item>Nd</item>
-    </string-array>
-    <string-array name="habit_weekdays_full">
-        <item>Poniedziałek</item><item>Wtorek</item><item>Środa</item><item>Czwartek</item>
-        <item>Piątek</item><item>Sobota</item><item>Niedziela</item>
-    </string-array>
+    <string name="habit_catalog_title">Jaki nawyk chcesz zbudować?</string>
+    <string name="habit_catalog_custom">Stwórz własny nawyk</string>
+    <string name="habit_catalog_back">Wróć do katalogu</string>
+    <string name="habit_weekly_target">Określona liczba razy w tygodniu</string>
+    <string name="habit_weekly_goal">Cel tygodniowy</string>
+    <string name="habit_weekly_goal_number">%1$d</string>
+    <string name="habit_weekly_goal_hint">Możesz wykonać ten nawyk w dowolne dni tygodnia.</string>
+    <string name="habit_start_date">Data rozpoczęcia</string>
+    <string name="habit_start_date_today">Dzisiaj</string>
+    <string name="habit_start_date_use_today">Ustaw dzisiaj</string>
+    <string name="habit_date_confirm">Potwierdź datę</string>
+    <string name="habit_name_too_long">Użyj maksymalnie %1$d znaków.</string>
+    <string name="habit_category_health">Zdrowie</string>
+    <string name="habit_template_drink_water">Picie wody</string>
+    <string name="habit_template_drink_water_description">Wypij szklankę wody o stałej porze.</string>
+    <string name="habit_template_eat_healthy">Zdrowe odżywianie</string>
+    <string name="habit_template_eat_healthy_description">Zaplanuj jeden zbilansowany posiłek.</string>
+    <string name="habit_template_limit_sweets">Ograniczenie słodyczy</string>
+    <string name="habit_template_limit_sweets_description">Zamień słodką przekąskę na coś innego.</string>
+    <string name="habit_template_eat_vegetables">Jedzenie warzyw</string>
+    <string name="habit_template_eat_vegetables_description">Dodaj porcję warzyw do posiłku.</string>
+    <string name="habit_category_activity">Aktywność</string>
+    <string name="habit_template_walk">Spacer</string>
+    <string name="habit_template_walk_description">Wybierz się na krótki spacer.</string>
+    <string name="habit_template_workout">Trening</string>
+    <string name="habit_template_workout_description">Zrób trening dopasowany do siebie.</string>
+    <string name="habit_template_run">Bieganie</string>
+    <string name="habit_template_run_description">Pobiegaj w spokojnym tempie.</string>
+    <string name="habit_template_stretch">Rozciąganie</string>
+    <string name="habit_template_stretch_description">Poświęć kilka minut na rozciąganie.</string>
+    <string name="habit_category_growth">Rozwój</string>
+    <string name="habit_template_read">Czytanie książek</string>
+    <string name="habit_template_read_description">Przeczytaj kilka stron książki.</string>
+    <string name="habit_template_learn_language">Nauka języka</string>
+    <string name="habit_template_learn_language_description">Poćwicz język przez kilka minut.</string>
+    <string name="habit_template_meditate">Medytacja</string>
+    <string name="habit_template_meditate_description">Usiądź na kilka minut w ciszy i skup się na oddechu.</string>
+    <string name="habit_template_learn_skill">Nauka nowej umiejętności</string>
+    <string name="habit_template_learn_skill_description">Znajdź czas na ćwiczenie nowej umiejętności.</string>
+    <string name="habit_category_everyday">Codzienne życie</string>
+    <string name="habit_template_tidy_up">Porządkowanie przestrzeni</string>
+    <string name="habit_template_tidy_up_description">Uporządkuj jedno niewielkie miejsce.</string>
+    <string name="habit_template_limit_phone">Ograniczenie korzystania z telefonu</string>
+    <string name="habit_template_limit_phone_description">Zaplanuj chwilę bez telefonu.</string>
+    <string name="habit_template_plan_day">Planowanie dnia</string>
+    <string name="habit_template_plan_day_description">Zapisz najważniejsze zadania na dziś.</string>
+    <string name="habit_template_journal">Prowadzenie dziennika</string>
+    <string name="habit_template_journal_description">Zapisz kilka zdań o swoim dniu.</string>
 </resources>
