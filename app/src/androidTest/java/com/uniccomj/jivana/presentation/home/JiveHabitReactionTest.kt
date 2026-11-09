@@ -19,7 +19,9 @@ import com.uniccomj.jivana.domain.usecase.JiveScoringConfig
 import com.uniccomj.jivana.presentation.avatar.JiveConditionController
 import com.uniccomj.jivana.presentation.components.JiveHomeCharacter
 import com.uniccomj.jivana.presentation.jiveplayground.JiveVisualState
+import java.time.Clock
 import java.time.LocalDate
+import java.time.ZoneOffset
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertFalse
@@ -44,8 +46,8 @@ class JiveHabitReactionTest {
             ApplicationProvider.getApplicationContext(),
             JivanaDatabase::class.java
         ).build()
-        repository =
-            RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
+        val clock = Clock.fixed(date.atStartOfDay(ZoneOffset.UTC).toInstant(), ZoneOffset.UTC)
+        repository = RoomHabitHistoryRepository(database, JiveScoringConfig(), events, clock)
         runBlocking { repository.scheduleHabit("habit", setOf(date)) }
     }
 

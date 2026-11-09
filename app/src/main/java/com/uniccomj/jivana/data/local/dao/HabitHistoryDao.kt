@@ -9,6 +9,9 @@ import androidx.room.Transaction
 import com.uniccomj.jivana.data.local.entity.HabitCompletionEntity
 import com.uniccomj.jivana.data.local.entity.HabitDayInteractionEntity
 import com.uniccomj.jivana.data.local.entity.HabitScheduleEntity
+import com.uniccomj.jivana.data.local.entity.HabitScheduleType
+import com.uniccomj.jivana.domain.repository.HabitCompletionRejection
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -151,6 +154,19 @@ abstract class HabitHistoryDao {
         throughEpochDay: Long
     ): Flow<List<DailyHabitPerformanceRow>>
 
+    @Query(
+        """
+        SELECT dateEpochDay FROM habit_completions
+        WHERE habitId = :habitId AND dateEpochDay BETWEEN :fromEpochDay AND :throughEpochDay
+        ORDER BY dateEpochDay
+        """
+    )
+    abstract fun observeCompletedEpochDays(
+        habitId: String,
+        fromEpochDay: Long,
+        throughEpochDay: Long
+    ): Flow<List<Long>>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     abstract suspend fun insertSchedules(schedules: List<HabitScheduleEntity>)
 
@@ -171,6 +187,19 @@ abstract class HabitHistoryDao {
         dateEpochDay: Long,
         completed: Boolean
     ): Boolean {
+        val context = completionContext(habitId, dateEpochDay)
+        val beforeStart = context.startEpochDay?.let { dateEpochDay < it } ?: false
+        // Older databases can have planned dates and completions without a habit definition.
+        val rejection = when {
+            context.archivedAtEpochMillis != null -> HabitCompletionRejection.ARCHIVED
+            beforeStart -> HabitCompletionRejection.BEFORE_START
+            context.scheduleType == HabitScheduleType.WEEKLY_TARGET -> null
+            context.hasPlannedDate -> null
+            context.scheduleType == null -> HabitCompletionRejection.NOT_FOUND
+            else -> HabitCompletionRejection.UNSCHEDULED
+        }
+        if (rejection != null) throw HabitOperationException.CompletionRejected(rejection)
+
         val newlyCompleted = if (completed) {
             insertCompletion(HabitCompletionEntity(habitId, dateEpochDay)) != -1L
         } else {
@@ -186,6 +215,22 @@ abstract class HabitHistoryDao {
         insertInteraction(HabitDayInteractionEntity(dateEpochDay))
     }
 
+    @Query(
+        """
+        SELECT habit.startEpochDay, habit.archivedAtEpochMillis, habit.scheduleType,
+            EXISTS(
+                SELECT 1 FROM habit_schedules AS schedule
+                WHERE schedule.habitId = request.habitId AND schedule.dateEpochDay = :dateEpochDay
+            ) AS hasPlannedDate
+        FROM (SELECT :habitId AS habitId) AS request
+        LEFT JOIN habits AS habit ON habit.id = request.habitId
+        """
+    )
+    protected abstract suspend fun completionContext(
+        habitId: String,
+        dateEpochDay: Long
+    ): HabitCompletionContext
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertCompletion(completion: HabitCompletionEntity): Long
 
@@ -194,4 +239,11 @@ abstract class HabitHistoryDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertInteraction(interaction: HabitDayInteractionEntity)
+
+    data class HabitCompletionContext(
+        val startEpochDay: Long?,
+        val archivedAtEpochMillis: Long?,
+        val scheduleType: HabitScheduleType?,
+        val hasPlannedDate: Boolean
+    )
 }

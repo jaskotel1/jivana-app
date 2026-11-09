@@ -52,7 +52,7 @@ class RoomHabitRepositoryTest {
                 ApplicationProvider.getApplicationContext(),
                 JivanaDatabase::class.java
             ).build()
-        history = RoomHabitHistoryRepository(database, JiveScoringConfig(), events)
+        history = RoomHabitHistoryRepository(database, JiveScoringConfig(), events, startClock)
         repository = RoomHabitRepository(database, history)
     }
 

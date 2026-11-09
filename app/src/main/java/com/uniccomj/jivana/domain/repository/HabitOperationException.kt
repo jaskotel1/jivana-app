@@ -7,4 +7,9 @@ sealed class HabitOperationException(message: String) : IllegalArgumentException
         HabitOperationException("Request token already used for another habit")
 
     class ActiveHabitsChanged : HabitOperationException("The active habits have changed")
+
+    class CompletionRejected(val reason: HabitCompletionRejection) :
+        HabitOperationException(reason.name)
 }
+
+enum class HabitCompletionRejection { FUTURE_DATE, BEFORE_START, ARCHIVED, NOT_FOUND, UNSCHEDULED }

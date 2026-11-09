@@ -121,7 +121,11 @@ class CreateHabitNavigationTest {
             ApplicationProvider.getApplicationContext(),
             JivanaDatabase::class.java,
             "jivana.db"
-        ).addMigrations(JivanaMigrations.Migration1To2, JivanaMigrations.Migration2To3).build()
+        ).addMigrations(
+            JivanaMigrations.Migration1To2,
+            JivanaMigrations.Migration2To3,
+            JivanaMigrations.Migration3To4
+        ).build()
         try {
             database.openHelper.readableDatabase.query(
                 """
