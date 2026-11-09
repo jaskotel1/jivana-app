@@ -38,7 +38,7 @@ class RoomHabitHistoryRepositoryTest {
         completionEvents = HabitCompletionEvents()
         repository =
             RoomHabitHistoryRepository(
-                database.habitHistoryDao(),
+                database,
                 JiveScoringConfig(),
                 completionEvents
             )

@@ -7,9 +7,11 @@ import com.uniccomj.jivana.domain.model.JiveEnergy
 import com.uniccomj.jivana.domain.model.JiveMood
 import com.uniccomj.jivana.domain.model.JiveSleepiness
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
+import com.uniccomj.jivana.domain.repository.HabitRepository
 import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
 import com.uniccomj.jivana.domain.usecase.JiveConditionScorer
 import com.uniccomj.jivana.domain.usecase.ObserveJiveConditionUseCase
+import io.mockk.coEvery
 import io.mockk.mockk
 import java.time.Clock
 import java.time.Instant
@@ -20,8 +22,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -30,6 +34,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -139,15 +144,54 @@ class JiveConditionViewModelTest {
             assertEquals(count + 1, repository.observedDates.size)
         }
 
+    @Test
+    fun `history emission after date rollback refreshes the day`() = runTest(dispatcher) {
+        val clock = MutableClock(Instant.parse("2026-02-01T12:00:00Z"))
+        val originalDay = LocalDate.now(clock)
+        val history = FakeHabitHistoryRepository(emptyList())
+        val habits = mockk<HabitRepository>()
+        val queriedDates = mutableListOf<LocalDate>()
+        coEvery { habits.getPendingSchedules(any()) } coAnswers {
+            queriedDates += firstArg<LocalDate>()
+            emptyList()
+        }
+        val controller = JiveConditionController(HabitCompletionEvents())
+        val published = mutableListOf<JiveCondition>()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            controller.condition.collect { published += it }
+        }
+        val viewModel = createViewModel(
+            history,
+            controller,
+            clock,
+            EnsureHabitSchedulesUseCase(habits, clock)
+        )
+        runCurrent()
+        assertEquals(listOf(originalDay), history.observedDates)
+        queriedDates.clear()
+
+        clock.currentInstant = clock.currentInstant.minusSeconds(86_400)
+        // The old Room subscription can emit before the lifecycle monitor notices the change.
+        history.replaceHistory(listOf(DailyHabitPerformance(originalDay, 1, 1, true)))
+        runCurrent()
+
+        val currentDay = LocalDate.now(clock)
+        assertEquals(listOf(originalDay, currentDay), history.observedDates)
+        assertEquals(listOf(JiveCondition()), published)
+        assertFalse(viewModel.refreshFailed.value)
+        assertEquals(setOf(currentDay), queriedDates.toSet())
+    }
+
     private fun createViewModel(
         repository: HabitHistoryRepository,
         controller: JiveConditionController,
-        clock: Clock = FixedClock
+        clock: Clock = FixedClock,
+        ensureHabitSchedules: EnsureHabitSchedulesUseCase = mockk(relaxed = true)
     ) = JiveConditionViewModel(
         observeJiveCondition = ObserveJiveConditionUseCase(
             repository,
             JiveConditionScorer(),
-            mockk<EnsureHabitSchedulesUseCase>(relaxed = true)
+            ensureHabitSchedules
         ),
         controller = controller,
         clock = clock
@@ -172,7 +216,7 @@ class JiveConditionViewModelTest {
             throughDate: LocalDate
         ): Flow<List<DailyHabitPerformance>> {
             observedDates += throughDate
-            return history
+            return history.map { rows -> rows.filter { it.date <= throughDate } }
         }
 
         fun replaceHistory(value: List<DailyHabitPerformance>) {

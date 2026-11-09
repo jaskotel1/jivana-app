@@ -10,14 +10,18 @@ class EnsureHabitSchedulesUseCase(
 ) {
     /** Returns whether unfinished progress was found, including work committed by another caller. */
     suspend operator fun invoke(throughDate: LocalDate = LocalDate.now(clock)): Boolean {
-        require(throughDate <= LocalDate.now(clock)) { "Cannot generate future schedules" }
         var hadPendingSchedules = false
         do {
-            val pending = repository.getPendingSchedules(throughDate)
+            val pending = repository.getPendingSchedules(minOf(throughDate, LocalDate.now(clock)))
             if (pending.isNotEmpty()) hadPendingSchedules = true
             for (progress in pending) {
                 // Bounded transactions also allow cancellation during a long absence.
-                val batchEnd = minOf(throughDate, progress.scheduledThrough.plusDays(BatchDays))
+                val batchEnd = minOf(
+                    throughDate,
+                    LocalDate.now(clock),
+                    progress.scheduledThrough.plusDays(BatchDays)
+                )
+                if (batchEnd <= progress.scheduledThrough) continue
                 val firstDay =
                     maxOf(progress.habit.startDate, progress.scheduledThrough.plusDays(1))
                 val dates = generateSequence(firstDay) { it.plusDays(1) }

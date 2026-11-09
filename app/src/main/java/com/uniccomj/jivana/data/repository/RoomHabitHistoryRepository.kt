@@ -1,6 +1,6 @@
 package com.uniccomj.jivana.data.repository
 
-import com.uniccomj.jivana.data.local.dao.HabitHistoryDao
+import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.data.local.entity.HabitScheduleEntity
 import com.uniccomj.jivana.data.mapper.toDomain
 import com.uniccomj.jivana.domain.model.DailyHabitPerformance
@@ -11,15 +11,18 @@ import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RoomHabitHistoryRepository @Inject constructor(
-    private val dao: HabitHistoryDao,
+    private val database: JivanaDatabase,
     private val scoringConfig: JiveScoringConfig,
     private val completionEvents: HabitCompletionEvents
 ) : HabitHistoryRepository {
+    private val dao get() = database.habitHistoryDao()
+
     override fun observeDailyPerformance(
         throughDate: LocalDate
     ): Flow<List<DailyHabitPerformance>> {
@@ -34,7 +37,10 @@ class RoomHabitHistoryRepository @Inject constructor(
             sleepinessRecoveryThreshold = scoringConfig.sleepinessRecoveryThreshold,
             sleepingAfterInactiveDays = scoringConfig.sleepingAfterInactiveDays,
             sleepinessFullRecoveryDays = scoringConfig.sleepinessFullRecoveryDays
-        ).flatMapLatest { startEpochDay ->
+        ).combine(database.invalidationTracker.createFlow("habits")) { startEpochDay, _ ->
+            // A new habit can commit without any planned day to invalidate the history tables.
+            startEpochDay
+        }.flatMapLatest { startEpochDay ->
             dao.observeDailyPerformance(
                 fromEpochDay = startEpochDay ?: Long.MIN_VALUE,
                 throughEpochDay = throughEpochDay
