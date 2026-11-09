@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -18,11 +19,11 @@ import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.model.HabitScheduleProgress
+import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import java.io.IOException
 import java.time.Clock
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlinx.coroutines.CompletableDeferred
@@ -38,37 +39,38 @@ class CreateHabitScreenTest {
     private var returned = 0
 
     @Test
-    fun nameAndDaysAreValidatedThenSelectedWeekdayIsSaved() {
+    fun nameIsRequiredAndDailyIgnoresTheLastWeeklyTarget() {
         showForm()
         click("habit_save")
-        compose.onNodeWithText(text(R.string.habit_name_required)).assertIsDisplayed()
+        compose.onNodeWithText(text(R.string.habit_name_required))
+            .performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("habit_name").performTextInput("Read")
         compose.onNodeWithTag("habit_description").performTextInput("Ten pages")
         click("habit_weekly")
-        DayOfWeek.entries.forEach { click("habit_day_${it.name}") }
-        click("habit_save")
-        compose.onNodeWithText(
-            text(R.string.habit_days_required)
-        ).performScrollTo().assertIsDisplayed()
-        click("habit_day_MONDAY")
+        click("habit_target_7")
+        click("habit_daily")
+        compose.onNodeWithTag("habit_target_7").assertDoesNotExist()
+        click("habit_weekly")
+        compose.onNodeWithTag("habit_target_7").assertIsSelected()
+        click("habit_daily")
         click("habit_save")
         compose.waitForIdle()
         assertEquals(1, returned)
         val habit = repository.created.values.single()
         assertEquals("Read", habit.name)
         assertEquals("Ten pages", habit.description)
-        assertEquals(HabitSchedule.LegacyWeekdays(setOf(DayOfWeek.MONDAY)), habit.schedule)
+        assertEquals(HabitSchedule.Daily, habit.schedule)
     }
 
     @Test
     fun failedSavePreservesInputAndPendingRetryDisablesDuplicateSubmission() {
         showForm()
         compose.onNodeWithTag("habit_name").performTextInput("Water")
-        repository.fail = true
+        repository.failure = IOException("Write failed")
         click("habit_save")
         compose.onNodeWithTag("habit_save_error").performScrollTo().assertIsDisplayed()
         compose.onNodeWithTag("habit_name").assertTextContains("Water")
-        repository.fail = false
+        repository.failure = null
         val gate = CompletableDeferred<Unit>()
         repository.gate = gate
         click("habit_save")
@@ -83,15 +85,43 @@ class CreateHabitScreenTest {
     }
 
     @Test
-    fun cancelReturnsWithoutCreatingAHabit() {
+    fun returningToCatalogPreservesTheDraftUntilItIsCancelled() {
         showForm()
         compose.onNodeWithTag("habit_name").performTextInput("Unfinished")
         compose.onNodeWithTag("habit_cancel").performScrollTo().assertIsEnabled().performClick()
+        click("habit_catalog_custom")
+        compose.onNodeWithTag("habit_name").assertTextContains("Unfinished")
+        click("habit_cancel")
+        click("habit_catalog_cancel")
         assertEquals(1, returned)
         assertEquals(0, repository.created.size)
     }
 
+    @Test
+    fun activeHabitRejectionIsVisibleForTemplatesAndCustomHabits() {
+        repository.failure = HabitOperationException.ActiveHabitLimitReached()
+        showCatalog()
+        click("habit_category_health")
+        click("habit_template_drink_water")
+        click("habit_save")
+        val error = compose.onNodeWithTag("habit_save_error")
+        error.performScrollTo().assertTextContains(text(R.string.habit_active_limit))
+
+        click("habit_cancel")
+        click("habit_catalog_custom")
+        compose.onNodeWithTag("habit_name").performTextInput("Custom habit")
+        click("habit_save")
+        error.performScrollTo().assertTextContains(text(R.string.habit_active_limit))
+        assertEquals(2, repository.attempts)
+        assertEquals(0, repository.created.size)
+    }
+
     private fun showForm() {
+        showCatalog()
+        click("habit_catalog_custom")
+    }
+
+    private fun showCatalog() {
         val vm =
             CreateHabitViewModel(
                 CreateHabitUseCase(repository, Clock.systemDefaultZone()),
@@ -106,13 +136,13 @@ class CreateHabitScreenTest {
 
     private class FormRepository : HabitRepository {
         val created = mutableMapOf<String, Habit>()
-        var fail = false
+        var failure: Exception? = null
         var gate: CompletableDeferred<Unit>? = null
         var attempts = 0
 
         override suspend fun create(habit: Habit, initialDates: Set<LocalDate>): Habit {
             attempts++
-            if (fail) throw IOException("Write failed")
+            failure?.let { throw it }
             gate?.await()
             created[habit.id] = habit
             return habit
