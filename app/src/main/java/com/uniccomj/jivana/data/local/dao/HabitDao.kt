@@ -14,7 +14,12 @@ interface HabitDao {
     suspend fun getById(id: String): HabitEntity?
 
     @Query(
-        "SELECT * FROM habits WHERE archivedAtEpochMillis IS NULL AND scheduledThroughEpochDay < :throughEpochDay"
+        """
+        SELECT * FROM habits
+        WHERE archivedAtEpochMillis IS NULL
+          AND scheduleType != 'WEEKLY_TARGET'
+          AND scheduledThroughEpochDay < :throughEpochDay
+        """
     )
     suspend fun getPendingSchedules(throughEpochDay: Long): List<HabitEntity>
 

@@ -26,7 +26,7 @@ class EnsureHabitSchedulesUseCase(
                     maxOf(progress.habit.startDate, progress.scheduledThrough.plusDays(1))
                 val dates = generateSequence(firstDay) { it.plusDays(1) }
                     .takeWhile { it <= batchEnd }
-                    .filter { it.dayOfWeek in progress.habit.scheduledDays }
+                    .filter { progress.habit.schedule.isPlannedOn(it.dayOfWeek) }
                     .toSet()
                 repository.advanceSchedule(progress, batchEnd, dates)
             }

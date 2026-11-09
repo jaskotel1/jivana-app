@@ -23,4 +23,15 @@ object JivanaMigrations {
             )
         }
     }
+
+    val Migration2To3 = object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE habits ADD COLUMN scheduleType TEXT NOT NULL DEFAULT 'LEGACY_WEEKDAYS'"
+            )
+            db.execSQL("ALTER TABLE habits ADD COLUMN weeklyTarget INTEGER")
+            // Version 2 used the seven-bit mask 127 for a habit planned every day.
+            db.execSQL("UPDATE habits SET scheduleType = 'DAILY' WHERE scheduledDaysMask = 127")
+        }
+    }
 }

@@ -16,6 +16,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.model.HabitScheduleProgress
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
@@ -54,7 +55,7 @@ class CreateHabitScreenTest {
         val habit = repository.created.values.single()
         assertEquals("Read", habit.name)
         assertEquals("Ten pages", habit.description)
-        assertEquals(setOf(DayOfWeek.MONDAY), habit.scheduledDays)
+        assertEquals(HabitSchedule.LegacyWeekdays(setOf(DayOfWeek.MONDAY)), habit.schedule)
     }
 
     @Test

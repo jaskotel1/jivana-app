@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.HabitCompletionEvents
+import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.usecase.CreateHabitUseCase
 import com.uniccomj.jivana.domain.usecase.EnsureHabitSchedulesUseCase
@@ -100,6 +101,63 @@ class RoomHabitRepositoryTest {
         }.awaitAll()
         assertEquals(1, results.map { it.id }.toSet().size)
         assertEquals(1, history.observeDailyPerformance(start).first().single().plannedHabitCount)
+    }
+
+    @Test
+    fun dailyAndWeeklyHabitsRoundTripWithoutAddingWeeklyObligations() = runTest {
+        val create = CreateHabitUseCase(repository, startClock)
+        val daily = create.createWithSchedule("Water", "", HabitSchedule.Daily)
+        assertEquals(daily, repository.getById(daily.id))
+        val baseline = history.observeDailyPerformance(start).first()
+        val weeklyHabits = listOf(1, 3, 7).map { goal ->
+            val schedule = HabitSchedule.WeeklyTarget(goal)
+            val habit = create.createWithSchedule("Exercise", "", schedule, "weekly-$goal")
+            assertEquals(habit, repository.getById(habit.id))
+            assertEquals(schedule, repository.getById(habit.id)?.schedule)
+            assertEquals(habit, create.createWithSchedule("Exercise", "", schedule, "weekly-$goal"))
+            habit
+        }
+        assertEquals(baseline, history.observeDailyPerformance(start).first())
+
+        val end = start.plusWeeks(2)
+        val endClock = Clock.fixed(end.atTime(12, 0).toInstant(ZoneOffset.UTC), ZoneOffset.UTC)
+        assertEquals(listOf(daily), repository.getPendingSchedules(end).map { it.habit })
+        EnsureHabitSchedulesUseCase(repository, endClock)()
+
+        val performance = database.habitHistoryDao()
+            .observeDailyPerformance(start.toEpochDay(), end.toEpochDay()).first()
+        assertEquals(15, performance.size)
+        assertTrue(performance.all { it.plannedHabitCount == 1 })
+        for (weekly in weeklyHabits) {
+            val entity = database.habitDao().getById(weekly.id)!!
+            assertEquals(start.toEpochDay(), entity.scheduledThroughEpochDay)
+        }
+    }
+
+    @Test
+    fun invalidScheduleCombinationsCannotBeStored() = runTest {
+        val create = CreateHabitUseCase(repository, startClock)
+        val daily = create.createWithSchedule("Water", "", HabitSchedule.Daily)
+        val weekly = create.createWithSchedule("Exercise", "", HabitSchedule.WeeklyTarget(3))
+        val dailyEntity = database.habitDao().getById(daily.id)!!
+        val weeklyEntity = database.habitDao().getById(weekly.id)!!
+        val invalidDaily = runCatching {
+            database.habitDao().insert(dailyEntity.copy(id = "invalid-daily", weeklyTarget = 3))
+        }
+        val invalidWeekly = runCatching {
+            database.habitDao().insert(
+                weeklyEntity.copy(id = "invalid-weekly", scheduledDaysMask = 1)
+            )
+        }
+        val invalidPlan = runCatching {
+            repository.create(weekly.copy(id = "invalid-plan"), setOf(start))
+        }
+        assertTrue(invalidDaily.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(invalidWeekly.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(invalidPlan.exceptionOrNull() is IllegalArgumentException)
+        assertTrue(repository.getById("invalid-daily") == null)
+        assertTrue(repository.getById("invalid-weekly") == null)
+        assertTrue(repository.getById("invalid-plan") == null)
     }
 
     @Test

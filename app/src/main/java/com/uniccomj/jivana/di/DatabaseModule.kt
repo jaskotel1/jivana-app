@@ -21,5 +21,5 @@ object DatabaseModule {
             context,
             JivanaDatabase::class.java,
             "jivana.db"
-        ).addMigrations(JivanaMigrations.Migration1To2).build()
+        ).addMigrations(JivanaMigrations.Migration1To2, JivanaMigrations.Migration2To3).build()
 }

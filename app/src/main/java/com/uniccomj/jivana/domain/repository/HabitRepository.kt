@@ -10,6 +10,7 @@ interface HabitRepository {
 
     suspend fun getById(id: String): Habit?
 
+    /** Active day-based schedules with dates still to materialize through the given date. */
     suspend fun getPendingSchedules(throughDate: LocalDate): List<HabitScheduleProgress>
 
     /** Commits dates and cursor together; false means another generator already advanced it. */
