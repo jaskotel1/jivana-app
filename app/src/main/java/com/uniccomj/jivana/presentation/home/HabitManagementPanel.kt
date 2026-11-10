@@ -15,18 +15,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.uniccomj.jivana.R
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitCycleLengthDays
+import com.uniccomj.jivana.domain.model.HabitCycleProgress
+import com.uniccomj.jivana.domain.model.HabitCycleStatus
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 internal fun HabitManagementPanel(
     state: HabitManagementState,
     onCreateHabit: () -> Unit,
     onArchive: (String) -> Unit,
-    onResolveConflict: (String, Set<String>) -> Unit
+    onResolveConflict: (String, Set<String>) -> Unit,
+    onStartCycle: (String) -> Unit
 ) {
     var confirmation by remember { mutableStateOf<HabitConfirmation?>(null) }
     Column(
@@ -40,9 +47,13 @@ internal fun HabitManagementPanel(
 
             habits.isEmpty() -> AddHabitButton(onCreateHabit, enabled = !state.working)
 
-            habits.size == 1 -> ActiveHabit(habits.single(), !state.working) { habit ->
-                confirmation = HabitConfirmation(habit)
-            }
+            habits.size == 1 -> ActiveHabit(
+                habit = habits.single(),
+                enabled = !state.working,
+                progress = state.cycleProgress,
+                onStartCycle = onStartCycle,
+                onArchive = { confirmation = HabitConfirmation(it) }
+            )
 
             else -> LegacyHabitChoices(habits, !state.working) { habit ->
                 confirmation = HabitConfirmation(habit, habits.map { it.id }.toSet())
@@ -73,15 +84,61 @@ internal fun HabitManagementPanel(
 }
 
 @Composable
-private fun ActiveHabit(habit: Habit, enabled: Boolean, onArchive: (Habit) -> Unit) {
+private fun ActiveHabit(
+    habit: Habit,
+    enabled: Boolean,
+    progress: HabitCycleProgress?,
+    onStartCycle: (String) -> Unit,
+    onArchive: (Habit) -> Unit
+) {
     Text(habit.name, modifier = Modifier.testTag("habit_active_name"))
     Text(stringResource(R.string.habit_active_limit))
+    if (progress == null) {
+        TextButton(onClick = { onStartCycle(habit.id) }, enabled = enabled) {
+            Text(stringResource(R.string.habit_cycle_start))
+        }
+    } else {
+        CycleProgressText(progress)
+    }
     Button(
         onClick = { onArchive(habit) },
         enabled = enabled,
         modifier = Modifier.testTag("habit_archive_open")
     ) {
         Text(stringResource(R.string.habit_archive))
+    }
+}
+
+@Composable
+private fun CycleProgressText(progress: HabitCycleProgress) {
+    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+        .withLocale(LocalConfiguration.current.locales[0])
+    val message = when (progress.status) {
+        HabitCycleStatus.SCHEDULED ->
+            stringResource(R.string.habit_cycle_scheduled, progress.startDate.format(formatter))
+
+        HabitCycleStatus.ACTIVE -> stringResource(
+            R.string.habit_cycle_day,
+            progress.activeDays,
+            HabitCycleLengthDays
+        )
+
+        HabitCycleStatus.PAUSED -> stringResource(
+            R.string.habit_cycle_paused,
+            progress.activeDays,
+            HabitCycleLengthDays
+        )
+
+        HabitCycleStatus.COMPLETED -> stringResource(R.string.habit_cycle_completed)
+
+        HabitCycleStatus.ARCHIVED -> return
+    }
+    Text(message, modifier = Modifier.testTag("habit_cycle_progress"))
+    progress.endDate?.let {
+        Text(
+            stringResource(R.string.habit_cycle_end, it.format(formatter)),
+            modifier = Modifier.testTag("habit_cycle_end")
+        )
     }
 }
 

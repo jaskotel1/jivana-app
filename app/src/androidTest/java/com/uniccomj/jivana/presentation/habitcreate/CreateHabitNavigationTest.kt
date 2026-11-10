@@ -87,6 +87,15 @@ class CreateHabitNavigationTest {
             text(R.string.habit_active_limit)
         ).assertIsDisplayed()
         verifyPersistedHabit(name, start, archived = false)
+        compose.onNodeWithTag(
+            "habit_cycle_progress"
+        ).assertTextContains(text(R.string.habit_cycle_day, 1, 60))
+        compose.activityRule.scenario.recreate()
+        compose.mainClock.advanceTimeBy(700)
+        waitForTag("habit_cycle_progress")
+        compose.onNodeWithTag(
+            "habit_cycle_progress"
+        ).assertTextContains(text(R.string.habit_cycle_day, 1, 60))
 
         compose.mainClock.advanceTimeBy(700)
         click("habit_archive_open")
@@ -124,7 +133,8 @@ class CreateHabitNavigationTest {
         ).addMigrations(
             JivanaMigrations.Migration1To2,
             JivanaMigrations.Migration2To3,
-            JivanaMigrations.Migration3To4
+            JivanaMigrations.Migration3To4,
+            JivanaMigrations.Migration4To5
         ).build()
         try {
             database.openHelper.readableDatabase.query(

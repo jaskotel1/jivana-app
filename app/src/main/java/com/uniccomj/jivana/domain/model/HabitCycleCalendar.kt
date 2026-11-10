@@ -16,7 +16,8 @@ data class HabitCyclePause(val startDate: LocalDate, val resumeDate: LocalDate? 
 class HabitCycleCalendar(
     val cycleId: String,
     startDate: LocalDate,
-    pauses: Collection<HabitCyclePause> = emptyList()
+    pauses: Collection<HabitCyclePause> = emptyList(),
+    val archivedOn: LocalDate? = null
 ) {
     init {
         require(cycleId.isNotBlank())
@@ -25,11 +26,15 @@ class HabitCycleCalendar(
     private val pauses = pauses.toList()
 
     val activeDates: List<LocalDate> = generateSequence(firstUnpausedOnOrAfter(startDate)) { date ->
-        firstUnpausedOnOrAfter(date.plusDays(1))
-    }.take(CycleLengthDays).toList()
+        if (date == LocalDate.MAX) null else firstUnpausedOnOrAfter(date.plusDays(1))
+    }.takeWhile { archivedOn == null || it <= archivedOn }
+        .take(HabitCycleLengthDays).toList()
 
     /** The last active day is known only when all 60 active dates can be determined. */
-    val endDate: LocalDate? get() = activeDates.getOrNull(CycleLengthDays - 1)
+    val endDate: LocalDate? get() = activeDates.getOrNull(HabitCycleLengthDays - 1)
+
+    /** The last date that can affect settlement, including an early archival. */
+    val settlementEndDate: LocalDate? get() = endDate ?: archivedOn
 
     internal fun firstUnpausedOnOrAfter(date: LocalDate): LocalDate? {
         var candidate = date
@@ -38,8 +43,6 @@ class HabitCycleCalendar(
             candidate = pause.resumeDate ?: return null
         }
     }
-
-    private companion object {
-        const val CycleLengthDays = 60
-    }
 }
+
+const val HabitCycleLengthDays = 60

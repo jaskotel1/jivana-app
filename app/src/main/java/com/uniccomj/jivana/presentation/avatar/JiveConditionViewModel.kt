@@ -4,15 +4,13 @@ import android.database.sqlite.SQLiteException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uniccomj.jivana.domain.usecase.ObserveJiveConditionUseCase
+import com.uniccomj.jivana.presentation.localDateChanges
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.io.IOException
 import java.time.Clock
-import java.time.Duration
 import java.time.LocalDate
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -20,7 +18,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
-import kotlinx.coroutines.isActive
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -63,23 +60,6 @@ class JiveConditionViewModel @Inject constructor(
 
     /** Lifecycle cancels this monitor in the background; resume always catches up first. */
     suspend fun refreshWhileResumed() {
-        var previousDate: LocalDate? = null
-        var previousZone: java.time.ZoneId? = null
-        while (currentCoroutineContext().isActive) {
-            val date = LocalDate.now(clock)
-            val zone = clock.zone
-            if (date != previousDate || zone != previousZone) {
-                refreshForCurrentDay()
-                previousDate = date
-                previousZone = zone
-            }
-            val midnight = date.plusDays(1).atStartOfDay(zone).toInstant()
-            val remaining = Duration.between(clock.instant(), midnight).toMillis()
-            delay(remaining.coerceIn(1L, MaximumDateCheckMillis))
-        }
-    }
-
-    private companion object {
-        const val MaximumDateCheckMillis = 60_000L
+        localDateChanges(clock).collect { refreshForCurrentDay() }
     }
 }

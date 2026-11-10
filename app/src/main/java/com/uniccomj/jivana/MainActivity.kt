@@ -38,7 +38,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.RESUMED) {
-                jiveConditionViewModel.refreshWhileResumed()
+                launch { jiveConditionViewModel.refreshWhileResumed() }
+                launch { habitManagementViewModel.refreshWhileResumed() }
             }
         }
         setContent {

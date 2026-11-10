@@ -7,7 +7,6 @@ import androidx.test.core.app.ApplicationProvider
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitCompletionEvents
-import com.uniccomj.jivana.domain.model.HabitCycleCalendar
 import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.model.HabitWeekOutcome
 import com.uniccomj.jivana.domain.repository.HabitCompletionRejection
@@ -80,7 +79,9 @@ class DatedHabitCompletionTest {
                 snapshots.send(it)
             }
         }
-        val cycle = HabitCycleCalendar("cycle", monday)
+        val storedCycle = checkNotNull(store.habits.observeCycle(habit.id).first())
+        val cycle = storedCycle.calendar
+        val progress = storedCycle.progressOn(sunday)
         val settle = SettleWeeklyHabitUseCase(clock)
         val fullWeek = snapshots.receive()
         assertEquals(listOf(monday, wednesday, sunday), fullWeek)
@@ -95,6 +96,8 @@ class DatedHabitCompletionTest {
         assertEquals(2, after.progress.completedDays)
         assertEquals(HabitWeekOutcome.FAILURE, after.outcome)
         assertEquals(before.progress.id, after.progress.id)
+        assertEquals(storedCycle.id, after.progress.id.cycleId)
+        assertEquals(progress, store.habits.observeCycle(habit.id).first()?.progressOn(sunday))
     }
 
     @Test
@@ -116,6 +119,7 @@ class DatedHabitCompletionTest {
         assertEquals(1, corrected.last().plannedHabitCount)
         assertEquals(0, corrected.last().completedHabitCount)
         assertTrue(corrected.last().activityRecorded)
+        assertEquals(3, store.cycle(habit.id).progressOn(wednesday).activeDays)
     }
 
     @Test
@@ -130,6 +134,7 @@ class DatedHabitCompletionTest {
             store.setCompletion(habit.id, tuesday, true)
         }
         assertEquals(listOf(friday), store.completedDates(habit.id, monday, sunday))
+        assertEquals(2, store.cycle(habit.id).progressOn(tuesday).activeDays)
 
         store.history.scheduleHabit("legacy", setOf(monday))
         store.setCompletion("legacy", monday, true)
@@ -254,16 +259,22 @@ class DatedHabitCompletionTest {
         val nextMonday = monday.plusWeeks(1)
         val westernClock = clock.withZone(ZoneId.of("America/Los_Angeles"))
         try {
-            val habitId = withDatabase(name) { first ->
+            val cycle = withDatabase(name) { first ->
                 val original = CompletionStore(first, clock)
                 val habit = original.create(weekly, monday)
                 original.setCompletion(habit.id, sunday, true)
                 original.setCompletion(habit.id, nextMonday, true)
-                habit.id
+                original.cycle(habit.id)
             }
+            val habitId = cycle.habitId
 
             withDatabase(name) { second ->
                 val reopened = CompletionStore(second, westernClock)
+                assertEquals(cycle, reopened.cycle(habitId))
+                assertEquals(
+                    7,
+                    reopened.cycle(habitId).progressOn(LocalDate.now(westernClock)).activeDays
+                )
                 assertEquals(
                     listOf(sunday, nextMonday),
                     reopened.completedDates(habitId, monday, nextMonday)
@@ -276,6 +287,8 @@ class DatedHabitCompletionTest {
 
             withDatabase(name) { third ->
                 val reopened = CompletionStore(third, clock)
+                assertEquals(cycle, reopened.cycle(habitId))
+                assertEquals(8, reopened.cycle(habitId).progressOn(LocalDate.now(clock)).activeDays)
                 val dates = reopened.completedDates(habitId, monday, nextMonday)
                 assertEquals(listOf(nextMonday), dates)
                 reopened.setCompletion(habitId, sunday, true)
@@ -283,6 +296,46 @@ class DatedHabitCompletionTest {
                     listOf(sunday, nextMonday),
                     reopened.completedDates(habitId, monday, nextMonday)
                 )
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun pauseIntervalsAndArchivedCycleSurviveReopen() = runTest {
+        val name = "habit-cycle-${UUID.randomUUID()}.db"
+        val pause = monday.plusDays(25)
+        val resume = pause.plusDays(7)
+        try {
+            val original = withDatabase(name) { db ->
+                val habits = CompletionStore(db, clock)
+                val habit = habits.create(weekly, monday)
+                val cycle = habits.cycle(habit.id)
+                db.openHelper.writableDatabase.execSQL(
+                    "INSERT INTO habit_cycle_pauses VALUES (?, ?, NULL)",
+                    arrayOf<Any>(cycle.id, pause.toEpochDay())
+                )
+                cycle
+            }
+            withDatabase(name) { db ->
+                val habits = CompletionStore(db, clock)
+                val paused = habits.cycle(original.habitId)
+                assertEquals(25, paused.progressOn(resume.minusDays(1)).activeDays)
+                assertEquals(null, paused.calendar.endDate)
+                db.openHelper.writableDatabase.execSQL(
+                    "UPDATE habit_cycle_pauses SET resumeEpochDay = ? WHERE cycleId = ?",
+                    arrayOf<Any>(resume.toEpochDay(), paused.id)
+                )
+                val archive = resume.plusDays(1).atStartOfDay(ZoneOffset.UTC)
+                habits.habits.archive(original.habitId, archive)
+            }
+            withDatabase(name) { db ->
+                val reopened = CompletionStore(db, clock).cycle(original.habitId)
+                assertEquals(original.id, reopened.id)
+                assertEquals(26, reopened.progressOn(resume).activeDays)
+                assertEquals(27, reopened.progressOn(resume.plusWeeks(1)).activeDays)
+                assertEquals(resume.plusDays(1), reopened.archivedOn)
             }
         } finally {
             context.deleteDatabase(name)
@@ -323,5 +376,7 @@ class DatedHabitCompletionTest {
 
         suspend fun completedDates(id: String, from: LocalDate, through: LocalDate) =
             history.observeCompletedDates(id, from, through).first()
+
+        suspend fun cycle(habitId: String) = checkNotNull(habits.observeCycle(habitId).first())
     }
 }

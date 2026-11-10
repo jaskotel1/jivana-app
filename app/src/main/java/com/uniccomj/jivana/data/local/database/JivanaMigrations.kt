@@ -57,4 +57,30 @@ object JivanaMigrations {
             db.execSQL("ALTER TABLE habit_completions_new RENAME TO habit_completions")
         }
     }
+
+    val Migration4To5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE habit_cycles (
+                    id TEXT NOT NULL PRIMARY KEY,
+                    habitId TEXT NOT NULL REFERENCES habits(id),
+                    startEpochDay INTEGER NOT NULL,
+                    archivedEpochDay INTEGER
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE UNIQUE INDEX index_habit_cycles_habitId ON habit_cycles(habitId)")
+            db.execSQL(
+                """
+                CREATE TABLE habit_cycle_pauses (
+                    cycleId TEXT NOT NULL REFERENCES habit_cycles(id),
+                    startEpochDay INTEGER NOT NULL,
+                    resumeEpochDay INTEGER,
+                    PRIMARY KEY(cycleId, startEpochDay)
+                )
+                """.trimIndent()
+            )
+        }
+    }
 }

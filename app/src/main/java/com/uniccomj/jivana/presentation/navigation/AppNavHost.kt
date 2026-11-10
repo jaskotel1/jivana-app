@@ -63,7 +63,8 @@ fun AppNavHost(
                             state = state,
                             onCreateHabit = openCreateHabit,
                             onArchive = habitManagement::archive,
-                            onResolveConflict = habitManagement::resolveConflict
+                            onResolveConflict = habitManagement::resolveConflict,
+                            onStartCycle = habitManagement::startCycle
                         )
                     }
                 }

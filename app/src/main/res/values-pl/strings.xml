@@ -18,6 +18,12 @@
     <string name="habit_retry">Spróbuj ponownie</string>
     <string name="habit_loading">Wczytywanie nawyków…</string>
     <string name="habit_active_limit">Możesz mieć jeden aktywny nawyk. Zarchiwizuj go, aby utworzyć następny.</string>
+    <string name="habit_cycle_start">Rozpocznij cykl 60-dniowy</string>
+    <string name="habit_cycle_scheduled">Początek cyklu %1$s</string>
+    <string name="habit_cycle_day">Dzień %1$d z %2$d cyklu</string>
+    <string name="habit_cycle_paused">Cykl wstrzymany po %1$d z %2$d dni</string>
+    <string name="habit_cycle_completed">Cykl 60-dniowy ukończony</string>
+    <string name="habit_cycle_end">Data końca cyklu %1$s</string>
     <string name="habit_token_conflict">Ten formularz zapisał już inny nawyk. Wróć i otwórz formularz ponownie.</string>
     <string name="habit_archive">Zarchiwizuj nawyk</string>
     <string name="habit_archive_confirmation">„%1$s” przestanie być aktywny. Zachowasz jego historię i możesz utworzyć nowy nawyk.</string>
