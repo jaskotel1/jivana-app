@@ -24,11 +24,12 @@ class SettleWeeklyHabitUseCase @Inject constructor(private val clock: Clock) {
         val settledWeeks = mutableListOf<SettledHabitWeek>()
         var openWeek: WeeklyHabitProgress? = null
         val activeWeeks = cycle.activeDates.groupBy { it.with(MondayOfWeek) }
+        val cycleEnd = cycle.settlementEndDate
 
         for ((monday, activeDates) in activeWeeks) {
             if (activeDates.first() > throughDate) break
             val sunday = monday.plusDays((DaysPerWeek - 1).toLong())
-            val periodEnd = minOf(sunday, cycle.endDate ?: sunday)
+            val periodEnd = minOf(sunday, cycleEnd ?: sunday)
             val progress = WeeklyHabitProgress(
                 id = HabitWeekId(cycle.cycleId, monday),
                 periodEnd = periodEnd,
@@ -38,10 +39,16 @@ class SettleWeeklyHabitUseCase @Inject constructor(private val clock: Clock) {
             )
 
             val closeDate = periodEnd.plusDays(1)
-            val settlementDate = if (periodEnd == cycle.endDate) {
+            val settlementDate = if (periodEnd == cycleEnd) {
                 closeDate
             } else {
-                cycle.firstUnpausedOnOrAfter(closeDate)
+                val unpausedDate = cycle.firstUnpausedOnOrAfter(closeDate)
+                val finalCloseDate = cycleEnd?.plusDays(1)
+                when {
+                    unpausedDate == null -> finalCloseDate
+                    finalCloseDate == null -> unpausedDate
+                    else -> minOf(unpausedDate, finalCloseDate)
+                }
             }
             if (settlementDate != null && settlementDate <= throughDate) {
                 settledWeeks += SettledHabitWeek(progress, settlementDate)

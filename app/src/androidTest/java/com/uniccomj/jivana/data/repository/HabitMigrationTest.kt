@@ -18,6 +18,8 @@ import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
@@ -43,7 +45,7 @@ class HabitMigrationTest {
         val database = openMigratedDatabase(databaseName)
         try {
             // Opening runs the production migration and Room's generated schema validation.
-            assertEquals(4, database.openHelper.writableDatabase.version)
+            assertEquals(5, database.openHelper.writableDatabase.version)
             database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM habits").use {
                 it.moveToFirst()
                 assertEquals(0, it.getInt(0))
@@ -124,7 +126,7 @@ class HabitMigrationTest {
         }
         val migrated = openMigratedDatabase(name)
         try {
-            assertEquals(4, migrated.openHelper.writableDatabase.version)
+            assertEquals(5, migrated.openHelper.writableDatabase.version)
         } finally {
             migrated.close()
         }
@@ -152,6 +154,7 @@ class HabitMigrationTest {
                 reopened.habitDao().getById("weekdays")?.scheduledThroughEpochDay
             )
             assertNull(repository.getById("orphan"))
+            assertNull(repository.observeCycle("weekdays").first())
             assertLegacyHistory(reopened, start)
 
             val end = start.plusWeeks(1)
@@ -196,7 +199,7 @@ class HabitMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val database = openMigratedDatabase(name)
         try {
-            assertEquals(4, database.openHelper.writableDatabase.version)
+            assertEquals(5, database.openHelper.writableDatabase.version)
             val history = RoomHabitHistoryRepository(
                 database,
                 JiveScoringConfig(),
@@ -219,6 +222,63 @@ class HabitMigrationTest {
         } finally {
             database.close()
             context.deleteDatabase(name)
+        }
+    }
+
+    @Test
+    fun versionFourPreservesWeeklyCompletionsAndStartsAnExistingCycleOnlyOnRequest() = runTest {
+        val name = "habit-migration-v4-test"
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val start = LocalDate.of(2026, 11, 2)
+        val optInDate = start.plusWeeks(2)
+        createLegacyDatabase(name, sourceVersion = 4).use { fixture ->
+            fixture.execSQL(
+                "INSERT INTO habits VALUES ('weekly', 'Swim', NULL, 0, ?, NULL, ?, 'WEEKLY_TARGET', 3)",
+                arrayOf(start.toEpochDay(), start.toEpochDay())
+            )
+            fixture.execSQL(
+                "INSERT INTO habit_completions VALUES ('weekly', ?)",
+                arrayOf(start.toEpochDay())
+            )
+        }
+        try {
+            val saved = withMigratedDatabase(name) { db ->
+                val history =
+                    RoomHabitHistoryRepository(
+                        db,
+                        JiveScoringConfig(),
+                        HabitCompletionEvents(),
+                        clockOn(optInDate)
+                    )
+                val repository = RoomHabitRepository(db, history)
+                assertEquals(5, db.openHelper.writableDatabase.version)
+                assertNull(repository.observeCycle("weekly").first())
+                val starts = List(3) {
+                    async { repository.startFirstCycle("weekly", optInDate) }
+                }.awaitAll()
+                assertEquals(1, starts.toSet().size)
+                assertEquals(optInDate, starts.first().startDate)
+                assertEquals(
+                    listOf(start),
+                    history.observeCompletedDates("weekly", start, optInDate).first()
+                )
+                starts.first()
+            }
+            withMigratedDatabase(name) { db ->
+                assertEquals(saved.id, db.habitCycleDao().getCycle("weekly")?.cycle?.id)
+                assertEquals(start.toEpochDay(), db.habitDao().getById("weekly")?.startEpochDay)
+            }
+        } finally {
+            context.deleteDatabase(name)
+        }
+    }
+
+    private inline fun <T> withMigratedDatabase(name: String, block: (JivanaDatabase) -> T): T {
+        val database = openMigratedDatabase(name)
+        try {
+            return block(database)
+        } finally {
+            database.close()
         }
     }
 
@@ -255,7 +315,8 @@ class HabitMigrationTest {
     ).addMigrations(
         JivanaMigrations.Migration1To2,
         JivanaMigrations.Migration2To3,
-        JivanaMigrations.Migration3To4
+        JivanaMigrations.Migration3To4,
+        JivanaMigrations.Migration4To5
     ).build()
 
     private fun clockOn(date: LocalDate): Clock =

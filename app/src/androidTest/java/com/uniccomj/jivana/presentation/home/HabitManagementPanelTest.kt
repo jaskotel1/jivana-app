@@ -45,7 +45,8 @@ class HabitManagementPanelTest {
                     onResolveConflict = { keep, expected ->
                         resolved = keep to expected
                         activeHabits = activeHabits.filter { it.id == keep }
-                    }
+                    },
+                    onStartCycle = { error("Cycle start is a separate action") }
                 )
             }
         }
@@ -66,6 +67,7 @@ class HabitManagementPanelTest {
     fun habitLimitExplainsWhatToDoInEnglishAndPolish() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         var localized by mutableStateOf(context.inLanguage("en"))
+        var startedHabit: String? = null
         compose.setContent {
             CompositionLocalProvider(
                 LocalConfiguration provides localized.resources.configuration,
@@ -76,7 +78,8 @@ class HabitManagementPanelTest {
                         state = HabitManagementState(activeHabits = listOf(first)),
                         onCreateHabit = {},
                         onArchive = {},
-                        onResolveConflict = { _, _ -> }
+                        onResolveConflict = { _, _ -> },
+                        onStartCycle = { startedHabit = it }
                     )
                 }
             }
@@ -88,6 +91,8 @@ class HabitManagementPanelTest {
             "Możesz mieć jeden aktywny nawyk. Zarchiwizuj go, aby utworzyć następny."
         )
             .assertIsDisplayed()
+        compose.onNodeWithText("Rozpocznij cykl 60-dniowy").performClick()
+        compose.runOnIdle { assertEquals(first.id, startedHabit) }
     }
 
     private fun Context.inLanguage(language: String): Context = createConfigurationContext(

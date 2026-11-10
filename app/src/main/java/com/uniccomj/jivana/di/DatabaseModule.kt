@@ -24,6 +24,7 @@ object DatabaseModule {
         ).addMigrations(
             JivanaMigrations.Migration1To2,
             JivanaMigrations.Migration2To3,
-            JivanaMigrations.Migration3To4
+            JivanaMigrations.Migration3To4,
+            JivanaMigrations.Migration4To5
         ).build()
 }

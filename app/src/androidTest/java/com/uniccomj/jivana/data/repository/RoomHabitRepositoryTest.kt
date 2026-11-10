@@ -4,6 +4,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
 import com.uniccomj.jivana.domain.model.HabitCompletionEvents
+import com.uniccomj.jivana.domain.model.HabitCycleStatus
 import com.uniccomj.jivana.domain.model.HabitSchedule
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.repository.HabitOperationException
@@ -102,6 +103,11 @@ class RoomHabitRepositoryTest {
         }.awaitAll()
         assertEquals(1, results.map { it.id }.toSet().size)
         assertEquals(1, history.observeDailyPerformance(start).first().single().plannedHabitCount)
+        val habitId = results.first().id
+        val cycle = checkNotNull(repository.observeCycle(habitId).first())
+        assertEquals(habitId, cycle.habitId)
+        assertEquals(start, cycle.startDate)
+        assertEquals(cycle, repository.startFirstCycle(habitId, start.plusDays(70)))
     }
 
     @Test
@@ -213,7 +219,30 @@ class RoomHabitRepositoryTest {
         } catch (_: IOException) {
             assertTrue(history.observeDailyPerformance(start).first().isEmpty())
             assertTrue(repository.getPendingSchedules(start.plusDays(1)).isEmpty())
+            database.openHelper.readableDatabase.query("SELECT COUNT(*) FROM habit_cycles").use {
+                assertTrue(it.moveToFirst())
+                assertEquals(0, it.getInt(0))
+            }
         }
+    }
+
+    @Test
+    fun futureCycleStaysAtZeroAndArchivingPreservesIt() = runTest {
+        val future = start.plusDays(7)
+        val habit = CreateHabitUseCase(repository, startClock)
+            .createWithSchedule("Future", "", HabitSchedule.Daily, startDate = future)
+        val cycle = checkNotNull(repository.observeCycle(habit.id).first())
+
+        assertEquals(HabitCycleStatus.SCHEDULED, cycle.progressOn(start).status)
+        assertEquals(0, cycle.progressOn(start).activeDays)
+        assertEquals(1, cycle.progressOn(future).activeDays)
+
+        repository.archive(habit.id, start.atStartOfDay(ZoneOffset.UTC))
+        val archived = checkNotNull(repository.observeCycle(habit.id).first())
+        assertEquals(cycle.id, archived.id)
+        assertEquals(start, archived.archivedOn)
+        assertEquals(HabitCycleStatus.ARCHIVED, archived.progressOn(future).status)
+        assertEquals(0, archived.progressOn(future).activeDays)
     }
 
     @Test

@@ -194,6 +194,23 @@ class SettleWeeklyHabitUseCaseTest {
     }
 
     @Test
+    fun `archiving during an open pause closes the deferred week without adding days`() {
+        val archive = monday.plusWeeks(1)
+        val calendar = HabitCycleCalendar(
+            "archived",
+            monday,
+            listOf(HabitCyclePause(monday.plusDays(3))),
+            archivedOn = archive
+        )
+        val snapshot = settle(calendar, threePerWeek, listOf(monday, archive), archive.plusDays(1))
+        val settled = snapshot.settledWeeks.single()
+        assertEquals(archive.plusDays(1), settled.settledOn)
+        assertEquals(3, settled.progress.activeDays)
+        assertEquals(1, settled.progress.completedDays)
+        assertNull(snapshot.openWeek)
+    }
+
+    @Test
     fun `replaying missed weeks produces an ordered series of distinct outcomes after restart`() {
         val fifthMonday = monday.plusWeeks(4)
         val dates = (0L..2L).map(fifthMonday::plusDays)

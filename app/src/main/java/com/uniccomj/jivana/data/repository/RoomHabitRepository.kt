@@ -2,16 +2,20 @@ package com.uniccomj.jivana.data.repository
 
 import androidx.room.withTransaction
 import com.uniccomj.jivana.data.local.database.JivanaDatabase
+import com.uniccomj.jivana.data.local.entity.HabitCycleEntity
 import com.uniccomj.jivana.data.local.entity.HabitScheduleType
 import com.uniccomj.jivana.data.mapper.toDomain
 import com.uniccomj.jivana.data.mapper.toEntity
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitCycle
 import com.uniccomj.jivana.domain.model.HabitScheduleProgress
+import com.uniccomj.jivana.domain.repository.HabitCycleRepository
 import com.uniccomj.jivana.domain.repository.HabitHistoryRepository
 import com.uniccomj.jivana.domain.repository.HabitOperationException
 import com.uniccomj.jivana.domain.repository.HabitRepository
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import java.util.UUID
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -20,8 +24,10 @@ import kotlinx.coroutines.flow.map
 class RoomHabitRepository @Inject constructor(
     private val database: JivanaDatabase,
     private val history: HabitHistoryRepository
-) : HabitRepository {
+) : HabitRepository,
+    HabitCycleRepository {
     private val dao get() = database.habitDao()
+    private val cycles get() = database.habitCycleDao()
 
     override suspend fun create(habit: Habit, initialDates: Set<LocalDate>): Habit =
         database.withTransaction {
@@ -44,12 +50,30 @@ class RoomHabitRepository @Inject constructor(
                 }
                 require(initialDates == expectedDates)
                 dao.insert(habit.toEntity(scheduledThrough = habit.startDate))
+                if (habit.archivedAt == null) insertCycle(habit.id, habit.startDate)
                 if (initialDates.isNotEmpty()) history.scheduleHabit(habit.id, initialDates)
                 habit
             }
         }
 
     override suspend fun getById(id: String): Habit? = dao.getById(id)?.toDomain()
+
+    override fun observeCycle(habitId: String): Flow<HabitCycle?> =
+        cycles.observeCycle(habitId).map { it?.toDomain() }.distinctUntilChanged()
+
+    override suspend fun startFirstCycle(habitId: String, onDate: LocalDate): HabitCycle =
+        database.withTransaction {
+            cycles.getCycle(habitId)?.let { return@withTransaction it.toDomain() }
+            val habit = dao.getById(habitId)?.takeIf { it.archivedAtEpochMillis == null }
+                ?: throw HabitOperationException.ActiveHabitsChanged()
+            insertCycle(habitId, maxOf(onDate, LocalDate.ofEpochDay(habit.startEpochDay)))
+        }
+
+    private suspend fun insertCycle(habitId: String, start: LocalDate): HabitCycle {
+        val id = UUID.randomUUID().toString()
+        cycles.insert(HabitCycleEntity(id, habitId, start.toEpochDay()))
+        return HabitCycle(id, habitId, start)
+    }
 
     override fun observeActiveHabits(): Flow<List<Habit>> =
         dao.observeActiveHabits().map { habits ->
@@ -80,11 +104,10 @@ class RoomHabitRepository @Inject constructor(
     }
 
     private suspend fun archiveActive(id: String, archivedAt: ZonedDateTime) {
+        val archiveEpochDay = archivedAt.toLocalDate().toEpochDay()
         dao.archive(id, archivedAt.toInstant().toEpochMilli())
-        database.habitHistoryDao().deleteUncompletedSchedulesAfter(
-            id,
-            archivedAt.toLocalDate().toEpochDay()
-        )
+        cycles.archive(id, archiveEpochDay)
+        database.habitHistoryDao().deleteUncompletedSchedulesAfter(id, archiveEpochDay)
     }
 
     override suspend fun getPendingSchedules(throughDate: LocalDate): List<HabitScheduleProgress> =
