@@ -42,7 +42,11 @@ class SettleWeeklyHabitUseCase @Inject constructor(private val clock: Clock) {
             val settlementDate = if (periodEnd == cycleEnd) {
                 closeDate
             } else {
-                val unpausedDate = cycle.firstUnpausedOnOrAfter(closeDate)
+                // A pause starting on or after closure cannot reopen an earlier result.
+                val unpausedDate = cycle.firstUnpausedOnOrAfter(
+                    closeDate,
+                    pauseStartedBefore = closeDate
+                )
                 val finalCloseDate = cycleEnd?.plusDays(1)
                 when {
                     unpausedDate == null -> finalCloseDate

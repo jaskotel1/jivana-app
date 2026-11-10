@@ -194,6 +194,18 @@ class SettleWeeklyHabitUseCaseTest {
     }
 
     @Test
+    fun `pausing on Monday preserves the result that was already due that morning`() {
+        val closeDate = monday.plusWeeks(1)
+        val dates = cycle.activeDates.take(3)
+        val before = settle(cycle, threePerWeek, dates, closeDate).settledWeeks.single()
+        val paused = HabitCycleCalendar("cycle", monday, listOf(HabitCyclePause(closeDate)))
+        val after = settle(paused, threePerWeek, dates, closeDate)
+
+        assertEquals(listOf(before), after.settledWeeks)
+        assertNull(after.openWeek)
+    }
+
+    @Test
     fun `archiving during an open pause closes the deferred week without adding days`() {
         val archive = monday.plusWeeks(1)
         val calendar = HabitCycleCalendar(

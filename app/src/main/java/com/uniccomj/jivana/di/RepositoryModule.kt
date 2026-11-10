@@ -1,5 +1,6 @@
 package com.uniccomj.jivana.di
 
+import com.uniccomj.jivana.data.repository.RoomHabitCycleRepository
 import com.uniccomj.jivana.data.repository.RoomHabitHistoryRepository
 import com.uniccomj.jivana.data.repository.RoomHabitRepository
 import com.uniccomj.jivana.domain.repository.HabitCycleRepository
@@ -19,7 +20,9 @@ abstract class RepositoryModule {
     abstract fun bindHabitRepository(repository: RoomHabitRepository): HabitRepository
 
     @Binds
-    abstract fun bindHabitCycleRepository(repository: RoomHabitRepository): HabitCycleRepository
+    abstract fun bindHabitCycleRepository(
+        repository: RoomHabitCycleRepository
+    ): HabitCycleRepository
 
     @Binds
     @Singleton

@@ -104,10 +104,11 @@ class RoomHabitRepositoryTest {
         assertEquals(1, results.map { it.id }.toSet().size)
         assertEquals(1, history.observeDailyPerformance(start).first().single().plannedHabitCount)
         val habitId = results.first().id
-        val cycle = checkNotNull(repository.observeCycle(habitId).first())
+        val cycles = RoomHabitCycleRepository(database)
+        val cycle = checkNotNull(cycles.observeCycle(habitId).first())
         assertEquals(habitId, cycle.habitId)
         assertEquals(start, cycle.startDate)
-        assertEquals(cycle, repository.startFirstCycle(habitId, start.plusDays(70)))
+        assertEquals(cycle, cycles.startFirstCycle(habitId, start.plusDays(70)))
     }
 
     @Test
@@ -231,14 +232,15 @@ class RoomHabitRepositoryTest {
         val future = start.plusDays(7)
         val habit = CreateHabitUseCase(repository, startClock)
             .createWithSchedule("Future", "", HabitSchedule.Daily, startDate = future)
-        val cycle = checkNotNull(repository.observeCycle(habit.id).first())
+        val cycles = RoomHabitCycleRepository(database)
+        val cycle = checkNotNull(cycles.observeCycle(habit.id).first())
 
         assertEquals(HabitCycleStatus.SCHEDULED, cycle.progressOn(start).status)
         assertEquals(0, cycle.progressOn(start).activeDays)
         assertEquals(1, cycle.progressOn(future).activeDays)
 
         repository.archive(habit.id, start.atStartOfDay(ZoneOffset.UTC))
-        val archived = checkNotNull(repository.observeCycle(habit.id).first())
+        val archived = checkNotNull(cycles.observeCycle(habit.id).first())
         assertEquals(cycle.id, archived.id)
         assertEquals(start, archived.archivedOn)
         assertEquals(HabitCycleStatus.ARCHIVED, archived.progressOn(future).status)

@@ -14,6 +14,16 @@ import com.uniccomj.jivana.domain.repository.HabitCompletionRejection
 import com.uniccomj.jivana.domain.repository.HabitOperationException
 import kotlinx.coroutines.flow.Flow
 
+private const val IsPausedDate = """
+    EXISTS (
+        SELECT 1 FROM habit_cycles AS cycle
+        JOIN habit_cycle_pauses AS pause ON pause.cycleId = cycle.id
+        WHERE cycle.habitId = schedule.habitId
+          AND schedule.dateEpochDay >= pause.startEpochDay
+          AND (pause.resumeEpochDay IS NULL OR schedule.dateEpochDay < pause.resumeEpochDay)
+    )
+"""
+
 @Dao
 abstract class HabitHistoryDao {
     @Query(
@@ -32,7 +42,7 @@ abstract class HabitHistoryDao {
                 AND completion.dateEpochDay = schedule.dateEpochDay
             LEFT JOIN habit_day_interactions AS interaction
                 ON interaction.dateEpochDay = schedule.dateEpochDay
-            WHERE schedule.dateEpochDay <= :throughEpochDay
+            WHERE schedule.dateEpochDay <= :throughEpochDay AND NOT $IsPausedDate
             GROUP BY schedule.dateEpochDay
         ),
         energy_boundary AS (
@@ -145,6 +155,7 @@ abstract class HabitHistoryDao {
         LEFT JOIN habit_day_interactions AS interaction
             ON interaction.dateEpochDay = schedule.dateEpochDay
         WHERE schedule.dateEpochDay BETWEEN :fromEpochDay AND :throughEpochDay
+          AND NOT $IsPausedDate
         GROUP BY schedule.dateEpochDay
         ORDER BY schedule.dateEpochDay ASC
         """
@@ -193,6 +204,7 @@ abstract class HabitHistoryDao {
         val rejection = when {
             context.archivedAtEpochMillis != null -> HabitCompletionRejection.ARCHIVED
             beforeStart -> HabitCompletionRejection.BEFORE_START
+            context.isPaused -> HabitCompletionRejection.PAUSED
             context.scheduleType == HabitScheduleType.WEEKLY_TARGET -> null
             context.hasPlannedDate -> null
             context.scheduleType == null -> HabitCompletionRejection.NOT_FOUND
@@ -219,11 +231,13 @@ abstract class HabitHistoryDao {
         """
         SELECT habit.startEpochDay, habit.archivedAtEpochMillis, habit.scheduleType,
             EXISTS(
-                SELECT 1 FROM habit_schedules AS schedule
-                WHERE schedule.habitId = request.habitId AND schedule.dateEpochDay = :dateEpochDay
-            ) AS hasPlannedDate
-        FROM (SELECT :habitId AS habitId) AS request
-        LEFT JOIN habits AS habit ON habit.id = request.habitId
+                SELECT 1 FROM habit_schedules AS planned
+                WHERE planned.habitId = schedule.habitId
+                  AND planned.dateEpochDay = schedule.dateEpochDay
+            ) AS hasPlannedDate,
+            $IsPausedDate AS isPaused
+        FROM (SELECT :habitId AS habitId, :dateEpochDay AS dateEpochDay) AS schedule
+        LEFT JOIN habits AS habit ON habit.id = schedule.habitId
         """
     )
     protected abstract suspend fun completionContext(
@@ -244,6 +258,7 @@ abstract class HabitHistoryDao {
         val startEpochDay: Long?,
         val archivedAtEpochMillis: Long?,
         val scheduleType: HabitScheduleType?,
-        val hasPlannedDate: Boolean
+        val hasPlannedDate: Boolean,
+        val isPaused: Boolean
     )
 }

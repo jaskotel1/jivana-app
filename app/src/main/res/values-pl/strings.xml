@@ -24,6 +24,17 @@
     <string name="habit_cycle_paused">Cykl wstrzymany po %1$d z %2$d dni</string>
     <string name="habit_cycle_completed">Cykl 60-dniowy ukończony</string>
     <string name="habit_cycle_end">Data końca cyklu %1$s</string>
+    <string name="habit_pause">Wstrzymaj nawyk</string>
+    <string name="habit_resume">Wznów nawyk</string>
+    <string name="habit_paused">Nawyk wstrzymany</string>
+    <string name="habit_pause_start_date">Początek pauzy %1$s</string>
+    <string name="habit_pause_days">Dni pauzy: %1$d</string>
+    <string name="habit_pause_remaining">Pozostałe pauzy: %1$d</string>
+    <string name="habit_pause_confirmation">Wstrzymanie od dziś zatrzyma licznik 60-dniowego cyklu. Dotychczasowa historia nawyku zostanie zachowana.</string>
+    <string name="habit_pause_inactive">Możesz wstrzymać lub wznowić tylko aktywny cykl.</string>
+    <string name="habit_pause_completion_exists">Wykonanie zapisano już na dziś lub późniejszy dzień. Spróbuj wstrzymać nawyk innego dnia.</string>
+    <string name="habit_pause_date_conflict">Ta data koliduje z historią nawyku lub pauzą. Sprawdź datę urządzenia albo spróbuj ponownie później.</string>
+    <string name="habit_pause_limit_reached">Wykorzystano wszystkie pauzy w tym cyklu.</string>
     <string name="habit_token_conflict">Ten formularz zapisał już inny nawyk. Wróć i otwórz formularz ponownie.</string>
     <string name="habit_archive">Zarchiwizuj nawyk</string>
     <string name="habit_archive_confirmation">„%1$s” przestanie być aktywny. Zachowasz jego historię i możesz utworzyć nowy nawyk.</string>

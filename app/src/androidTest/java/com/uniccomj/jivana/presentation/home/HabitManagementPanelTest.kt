@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +18,8 @@ import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.uniccomj.jivana.core.ui.theme.JivanaTheme
 import com.uniccomj.jivana.domain.model.Habit
+import com.uniccomj.jivana.domain.model.HabitCycle
+import com.uniccomj.jivana.domain.model.HabitCyclePause
 import com.uniccomj.jivana.domain.model.HabitSchedule
 import java.time.LocalDate
 import java.util.Locale
@@ -46,7 +49,9 @@ class HabitManagementPanelTest {
                         resolved = keep to expected
                         activeHabits = activeHabits.filter { it.id == keep }
                     },
-                    onStartCycle = { error("Cycle start is a separate action") }
+                    onStartCycle = { error("Cycle start is a separate action") },
+                    onPause = {},
+                    onResume = { _, _ -> }
                 )
             }
         }
@@ -79,7 +84,9 @@ class HabitManagementPanelTest {
                         onCreateHabit = {},
                         onArchive = {},
                         onResolveConflict = { _, _ -> },
-                        onStartCycle = { startedHabit = it }
+                        onStartCycle = { startedHabit = it },
+                        onPause = {},
+                        onResume = { _, _ -> }
                     )
                 }
             }
@@ -93,6 +100,54 @@ class HabitManagementPanelTest {
             .assertIsDisplayed()
         compose.onNodeWithText("Rozpocznij cykl 60-dniowy").performClick()
         compose.runOnIdle { assertEquals(first.id, startedHabit) }
+    }
+
+    @Test
+    fun pauseControlsShowLocalizedProgressAndDisableNewPausesAtTheLimit() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val today = first.startDate.plusDays(3)
+        val cycle = HabitCycle("cycle", first.id, first.startDate)
+        val paused = cycle.copy(pauses = listOf(HabitCyclePause(today)))
+        var progress by mutableStateOf(cycle.progressOn(today).copy(remainingPauses = 1))
+        var localized by mutableStateOf(context.inLanguage("en"))
+        var resumeRequested: Pair<String, LocalDate>? = null
+        compose.setContent {
+            CompositionLocalProvider(
+                LocalConfiguration provides localized.resources.configuration,
+                LocalContext provides localized
+            ) {
+                JivanaTheme {
+                    HabitManagementPanel(
+                        state = HabitManagementState(listOf(first), cycleProgress = progress),
+                        onCreateHabit = {},
+                        onArchive = {},
+                        onResolveConflict = { _, _ -> },
+                        onStartCycle = {},
+                        onPause = { progress = paused.progressOn(today.plusDays(1)) },
+                        onResume = { id, start ->
+                            resumeRequested = id to start
+                            progress = cycle.progressOn(today)
+                        }
+                    )
+                }
+            }
+        }
+        compose.onNodeWithText("Pauses remaining: 1").assertIsDisplayed()
+        compose.onNodeWithText("Pause habit").performClick()
+        compose.onNodeWithText(
+            "Pausing today freezes your 60-day cycle. Your previous habit history is kept.",
+            useUnmergedTree = true
+        ).assertIsDisplayed()
+        compose.onNodeWithTag("habit_pause_confirm").performClick()
+        compose.onNodeWithText("Habit paused").assertIsDisplayed()
+        compose.onNodeWithText("Days on pause: 2").assertIsDisplayed()
+        compose.runOnIdle { localized = context.inLanguage("pl") }
+        compose.onNodeWithText("Nawyk wstrzymany").assertIsDisplayed()
+        compose.onNodeWithText("Dni pauzy: 2").assertIsDisplayed()
+        compose.onNodeWithText("Wznów nawyk").performClick()
+        compose.runOnIdle { assertEquals(first.id to today, resumeRequested) }
+        compose.onNodeWithText("Pozostałe pauzy: 0").assertIsDisplayed()
+        compose.onNodeWithTag("habit_pause_open").assertIsNotEnabled()
     }
 
     private fun Context.inLanguage(language: String): Context = createConfigurationContext(
