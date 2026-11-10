@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,6 +25,8 @@ import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitCycleLengthDays
 import com.uniccomj.jivana.domain.model.HabitCycleProgress
 import com.uniccomj.jivana.domain.model.HabitCycleStatus
+import com.uniccomj.jivana.domain.repository.HabitPauseRejection
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
@@ -33,7 +36,9 @@ internal fun HabitManagementPanel(
     onCreateHabit: () -> Unit,
     onArchive: (String) -> Unit,
     onResolveConflict: (String, Set<String>) -> Unit,
-    onStartCycle: (String) -> Unit
+    onStartCycle: (String) -> Unit,
+    onPause: (String) -> Unit,
+    onResume: (String, LocalDate) -> Unit
 ) {
     var confirmation by remember { mutableStateOf<HabitConfirmation?>(null) }
     Column(
@@ -49,9 +54,10 @@ internal fun HabitManagementPanel(
 
             habits.size == 1 -> ActiveHabit(
                 habit = habits.single(),
-                enabled = !state.working,
-                progress = state.cycleProgress,
+                state = state,
                 onStartCycle = onStartCycle,
+                onPause = onPause,
+                onResume = onResume,
                 onArchive = { confirmation = HabitConfirmation(it) }
             )
 
@@ -64,6 +70,15 @@ internal fun HabitManagementPanel(
                 stringResource(R.string.habit_management_error),
                 color = MaterialTheme.colorScheme.error
             )
+        }
+        state.pauseError?.let {
+            val error = when (it) {
+                HabitPauseRejection.INACTIVE_CYCLE -> R.string.habit_pause_inactive
+                HabitPauseRejection.COMPLETION_EXISTS -> R.string.habit_pause_completion_exists
+                HabitPauseRejection.DATE_CONFLICT -> R.string.habit_pause_date_conflict
+                HabitPauseRejection.LIMIT_REACHED -> R.string.habit_pause_limit_reached
+            }
+            Text(stringResource(error), color = MaterialTheme.colorScheme.error)
         }
     }
     confirmation?.let { choice ->
@@ -86,11 +101,14 @@ internal fun HabitManagementPanel(
 @Composable
 private fun ActiveHabit(
     habit: Habit,
-    enabled: Boolean,
-    progress: HabitCycleProgress?,
+    state: HabitManagementState,
     onStartCycle: (String) -> Unit,
+    onPause: (String) -> Unit,
+    onResume: (String, LocalDate) -> Unit,
     onArchive: (Habit) -> Unit
 ) {
+    val enabled = !state.working
+    val progress = state.cycleProgress
     Text(habit.name, modifier = Modifier.testTag("habit_active_name"))
     Text(stringResource(R.string.habit_active_limit))
     if (progress == null) {
@@ -99,6 +117,13 @@ private fun ActiveHabit(
         }
     } else {
         CycleProgressText(progress)
+        HabitPauseActions(
+            progress = progress,
+            enabled = enabled,
+            habitId = habit.id,
+            onPause = { onPause(habit.id) },
+            onResume = { onResume(habit.id, it) }
+        )
     }
     Button(
         onClick = { onArchive(habit) },
@@ -110,9 +135,78 @@ private fun ActiveHabit(
 }
 
 @Composable
+private fun HabitPauseActions(
+    progress: HabitCycleProgress,
+    enabled: Boolean,
+    habitId: String,
+    onPause: () -> Unit,
+    onResume: (LocalDate) -> Unit
+) {
+    var confirming by rememberSaveable(habitId) { mutableStateOf(false) }
+    when (progress.status) {
+        HabitCycleStatus.ACTIVE -> {
+            val pauseLabel = stringResource(R.string.habit_pause)
+            Text(stringResource(R.string.habit_pause_remaining, progress.remainingPauses))
+            Button(
+                onClick = { confirming = true },
+                enabled = enabled && progress.remainingPauses > 0,
+                modifier = Modifier.testTag("habit_pause_open")
+            ) {
+                Text(pauseLabel)
+            }
+            if (confirming) {
+                val explanation = stringResource(R.string.habit_pause_confirmation)
+                val cancelLabel = stringResource(R.string.habit_cancel)
+                AlertDialog(
+                    onDismissRequest = { confirming = false },
+                    title = { Text(pauseLabel) },
+                    text = { Text(explanation) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                confirming = false
+                                onPause()
+                            },
+                            enabled = enabled && progress.remainingPauses > 0,
+                            modifier = Modifier.testTag("habit_pause_confirm")
+                        ) {
+                            Text(pauseLabel)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirming = false }) {
+                            Text(cancelLabel)
+                        }
+                    }
+                )
+            }
+        }
+
+        HabitCycleStatus.PAUSED -> progress.pause?.let { pause ->
+            Text(stringResource(R.string.habit_paused))
+            Text(
+                stringResource(
+                    R.string.habit_pause_start_date,
+                    pause.startDate.format(habitDateFormatter())
+                )
+            )
+            Text(stringResource(R.string.habit_pause_days, pause.days))
+            Button(
+                onClick = { onResume(pause.startDate) },
+                enabled = enabled && pause.canResume,
+                modifier = Modifier.testTag("habit_resume")
+            ) {
+                Text(stringResource(R.string.habit_resume))
+            }
+        }
+
+        else -> Unit
+    }
+}
+
+@Composable
 private fun CycleProgressText(progress: HabitCycleProgress) {
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        .withLocale(LocalConfiguration.current.locales[0])
+    val formatter = habitDateFormatter()
     val message = when (progress.status) {
         HabitCycleStatus.SCHEDULED ->
             stringResource(R.string.habit_cycle_scheduled, progress.startDate.format(formatter))
@@ -141,6 +235,11 @@ private fun CycleProgressText(progress: HabitCycleProgress) {
         )
     }
 }
+
+@Composable
+private fun habitDateFormatter(): DateTimeFormatter =
+    DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
+        .withLocale(LocalConfiguration.current.locales[0])
 
 @Composable
 private fun LegacyHabitChoices(habits: List<Habit>, enabled: Boolean, onKeep: (Habit) -> Unit) {

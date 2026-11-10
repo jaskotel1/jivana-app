@@ -10,6 +10,23 @@ sealed class HabitOperationException(message: String) : IllegalArgumentException
 
     class CompletionRejected(val reason: HabitCompletionRejection) :
         HabitOperationException(reason.name)
+
+    class PauseChangeRejected(val reason: HabitPauseRejection) :
+        HabitOperationException(reason.name)
 }
 
-enum class HabitCompletionRejection { FUTURE_DATE, BEFORE_START, ARCHIVED, NOT_FOUND, UNSCHEDULED }
+enum class HabitCompletionRejection {
+    FUTURE_DATE,
+    BEFORE_START,
+    ARCHIVED,
+    NOT_FOUND,
+    UNSCHEDULED,
+    PAUSED
+}
+
+enum class HabitPauseRejection {
+    INACTIVE_CYCLE,
+    COMPLETION_EXISTS,
+    DATE_CONFLICT,
+    LIMIT_REACHED
+}

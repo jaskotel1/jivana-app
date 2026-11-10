@@ -154,7 +154,7 @@ class HabitMigrationTest {
                 reopened.habitDao().getById("weekdays")?.scheduledThroughEpochDay
             )
             assertNull(repository.getById("orphan"))
-            assertNull(repository.observeCycle("weekdays").first())
+            assertNull(RoomHabitCycleRepository(reopened).observeCycle("weekdays").first())
             assertLegacyHistory(reopened, start)
 
             val end = start.plusWeeks(1)
@@ -250,7 +250,7 @@ class HabitMigrationTest {
                         HabitCompletionEvents(),
                         clockOn(optInDate)
                     )
-                val repository = RoomHabitRepository(db, history)
+                val repository = RoomHabitCycleRepository(db)
                 assertEquals(5, db.openHelper.writableDatabase.version)
                 assertNull(repository.observeCycle("weekly").first())
                 val starts = List(3) {

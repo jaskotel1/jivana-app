@@ -25,6 +25,17 @@
     <string name="habit_cycle_paused">Cycle paused at %1$d of %2$d days</string>
     <string name="habit_cycle_completed">60-day cycle complete</string>
     <string name="habit_cycle_end">Cycle end date %1$s</string>
+    <string name="habit_pause">Pause habit</string>
+    <string name="habit_resume">Resume habit</string>
+    <string name="habit_paused">Habit paused</string>
+    <string name="habit_pause_start_date">Pause started %1$s</string>
+    <string name="habit_pause_days">Days on pause: %1$d</string>
+    <string name="habit_pause_remaining">Pauses remaining: %1$d</string>
+    <string name="habit_pause_confirmation">Pausing today freezes your 60-day cycle. Your previous habit history is kept.</string>
+    <string name="habit_pause_inactive">Only an active cycle can be paused or resumed.</string>
+    <string name="habit_pause_completion_exists">A completion is already recorded for today or a later date. Try pausing on another day.</string>
+    <string name="habit_pause_date_conflict">This date conflicts with existing habit history or a pause. Check your device date or try again on a later day.</string>
+    <string name="habit_pause_limit_reached">You have used all the pauses for this cycle.</string>
     <string name="habit_token_conflict">This form already saved a different habit. Go back and reopen the form.</string>
     <string name="habit_archive">Archive habit</string>
     <string name="habit_archive_confirmation">“%1$s” will stop being active. Its history will be kept, and you can create a new habit.</string>

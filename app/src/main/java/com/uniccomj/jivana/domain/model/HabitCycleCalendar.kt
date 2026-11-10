@@ -36,10 +36,15 @@ class HabitCycleCalendar(
     /** The last date that can affect settlement, including an early archival. */
     val settlementEndDate: LocalDate? get() = endDate ?: archivedOn
 
-    internal fun firstUnpausedOnOrAfter(date: LocalDate): LocalDate? {
+    internal fun firstUnpausedOnOrAfter(
+        date: LocalDate,
+        pauseStartedBefore: LocalDate? = null
+    ): LocalDate? {
         var candidate = date
         while (true) {
-            val pause = pauses.firstOrNull { candidate in it } ?: return candidate
+            val pause = pauses.firstOrNull {
+                candidate in it && (pauseStartedBefore == null || it.startDate < pauseStartedBefore)
+            } ?: return candidate
             candidate = pause.resumeDate ?: return null
         }
     }

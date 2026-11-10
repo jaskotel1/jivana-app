@@ -79,7 +79,7 @@ class DatedHabitCompletionTest {
                 snapshots.send(it)
             }
         }
-        val storedCycle = checkNotNull(store.habits.observeCycle(habit.id).first())
+        val storedCycle = store.cycle(habit.id)
         val cycle = storedCycle.calendar
         val progress = storedCycle.progressOn(sunday)
         val settle = SettleWeeklyHabitUseCase(clock)
@@ -97,7 +97,7 @@ class DatedHabitCompletionTest {
         assertEquals(HabitWeekOutcome.FAILURE, after.outcome)
         assertEquals(before.progress.id, after.progress.id)
         assertEquals(storedCycle.id, after.progress.id.cycleId)
-        assertEquals(progress, store.habits.observeCycle(habit.id).first()?.progressOn(sunday))
+        assertEquals(progress, store.cycle(habit.id).progressOn(sunday))
     }
 
     @Test
@@ -363,6 +363,7 @@ class DatedHabitCompletionTest {
         val events = HabitCompletionEvents()
         val history = RoomHabitHistoryRepository(database, JiveScoringConfig(), events, clock)
         val habits = RoomHabitRepository(database, history)
+        private val cycles = RoomHabitCycleRepository(database)
         val setCompletion = SetHabitCompletionUseCase(
             habits,
             history,
@@ -377,6 +378,6 @@ class DatedHabitCompletionTest {
         suspend fun completedDates(id: String, from: LocalDate, through: LocalDate) =
             history.observeCompletedDates(id, from, through).first()
 
-        suspend fun cycle(habitId: String) = checkNotNull(habits.observeCycle(habitId).first())
+        suspend fun cycle(habitId: String) = checkNotNull(cycles.observeCycle(habitId).first())
     }
 }

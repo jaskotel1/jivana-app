@@ -64,7 +64,9 @@ fun AppNavHost(
                             onCreateHabit = openCreateHabit,
                             onArchive = habitManagement::archive,
                             onResolveConflict = habitManagement::resolveConflict,
-                            onStartCycle = habitManagement::startCycle
+                            onStartCycle = habitManagement::startCycle,
+                            onPause = habitManagement::pause,
+                            onResume = habitManagement::resume
                         )
                     }
                 }

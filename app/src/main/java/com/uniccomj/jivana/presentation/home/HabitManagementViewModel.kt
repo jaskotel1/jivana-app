@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.uniccomj.jivana.domain.model.Habit
 import com.uniccomj.jivana.domain.model.HabitCycleProgress
 import com.uniccomj.jivana.domain.repository.HabitOperationException
+import com.uniccomj.jivana.domain.repository.HabitPauseRejection
 import com.uniccomj.jivana.domain.usecase.ManageActiveHabitsUseCase
 import com.uniccomj.jivana.domain.usecase.TrackHabitCycleUseCase
 import com.uniccomj.jivana.presentation.localDateChanges
@@ -30,7 +31,8 @@ data class HabitManagementState(
     val activeHabits: List<Habit>? = null,
     val working: Boolean = false,
     val failed: Boolean = false,
-    val cycleProgress: HabitCycleProgress? = null
+    val cycleProgress: HabitCycleProgress? = null,
+    val pauseError: HabitPauseRejection? = null
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -69,8 +71,15 @@ class HabitManagementViewModel @Inject constructor(
 
     fun startCycle(id: String) = modify { track.start(id) }
 
+    fun pause(id: String) = modify { track.pause(id) }
+
+    fun resume(id: String, pauseStart: LocalDate) = modify { track.resume(id, pauseStart) }
+
     suspend fun refreshWhileResumed() {
-        localDateChanges(clock).collect { currentDate.value = it }
+        localDateChanges(clock).collect { date ->
+            if (date != currentDate.value) mutableState.update { it.copy(pauseError = null) }
+            currentDate.value = date
+        }
     }
 
     fun resolveConflict(keepId: String, expectedActiveIds: Set<String>) =
@@ -78,12 +87,14 @@ class HabitManagementViewModel @Inject constructor(
 
     private fun modify(action: suspend () -> Unit) {
         if (state.value.working) return
-        mutableState.update { it.copy(working = true, failed = false) }
+        mutableState.update { it.copy(working = true, failed = false, pauseError = null) }
         viewModelScope.launch {
             try {
                 action()
             } catch (_: HabitOperationException.ActiveHabitsChanged) {
                 mutableState.update { it.copy(failed = true) }
+            } catch (error: HabitOperationException.PauseChangeRejected) {
+                mutableState.update { it.copy(pauseError = error.reason) }
             } catch (_: IOException) {
                 mutableState.update { it.copy(failed = true) }
             } catch (_: SQLiteException) {

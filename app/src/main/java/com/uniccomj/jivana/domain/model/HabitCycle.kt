@@ -1,6 +1,7 @@
 package com.uniccomj.jivana.domain.model
 
 import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 enum class HabitCycleStatus { SCHEDULED, ACTIVE, PAUSED, COMPLETED, ARCHIVED }
 
@@ -18,18 +19,26 @@ data class HabitCycle(
         val endDate = calendar.endDate
         val archived = archivedOn != null && date >= archivedOn
         val completed = endDate != null && (date > endDate || (archived && archivedOn == endDate))
+        val pause = pauses.lastOrNull { date in it }
         val status = when {
             completed -> HabitCycleStatus.COMPLETED
             archived -> HabitCycleStatus.ARCHIVED
             date < startDate -> HabitCycleStatus.SCHEDULED
-            pauses.any { date in it } -> HabitCycleStatus.PAUSED
+            pause != null -> HabitCycleStatus.PAUSED
             else -> HabitCycleStatus.ACTIVE
         }
         return HabitCycleProgress(
             status = status,
             activeDays = calendar.activeDates.count { it <= date },
             startDate = startDate,
-            endDate = endDate
+            endDate = endDate,
+            pause = pause?.let {
+                HabitPauseProgress(
+                    it.startDate,
+                    ChronoUnit.DAYS.between(it.startDate, date) + 1,
+                    it.resumeDate == null
+                )
+            }
         )
     }
 }
@@ -38,5 +47,9 @@ data class HabitCycleProgress(
     val status: HabitCycleStatus,
     val activeDays: Int,
     val startDate: LocalDate,
-    val endDate: LocalDate?
+    val endDate: LocalDate?,
+    val pause: HabitPauseProgress? = null,
+    val remainingPauses: Int = 0
 )
+
+data class HabitPauseProgress(val startDate: LocalDate, val days: Long, val canResume: Boolean)

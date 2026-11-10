@@ -20,6 +20,26 @@ interface HabitCycleDao {
     @Insert
     suspend fun insert(cycle: HabitCycleEntity)
 
+    @Insert
+    suspend fun insertPause(pause: HabitCyclePauseEntity)
+
+    @Query(
+        """
+        UPDATE habit_cycle_pauses SET resumeEpochDay = :resumeEpochDay
+        WHERE cycleId = :cycleId AND startEpochDay = :startEpochDay AND resumeEpochDay IS NULL
+        """
+    )
+    suspend fun closePause(cycleId: String, startEpochDay: Long, resumeEpochDay: Long)
+
+    @Query(
+        """
+        SELECT EXISTS (
+            SELECT 1 FROM habit_completions WHERE habitId = :habitId AND dateEpochDay >= :epochDay
+        )
+        """
+    )
+    suspend fun hasCompletionOnOrAfter(habitId: String, epochDay: Long): Boolean
+
     @Transaction
     @Query("SELECT * FROM habit_cycles WHERE habitId = :habitId")
     suspend fun getCycle(habitId: String): HabitCycleWithPauses?

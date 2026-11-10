@@ -96,6 +96,7 @@ class CreateHabitNavigationTest {
         compose.onNodeWithTag(
             "habit_cycle_progress"
         ).assertTextContains(text(R.string.habit_cycle_day, 1, 60))
+        verifyPauseSurvivesActivityRecreation()
 
         compose.mainClock.advanceTimeBy(700)
         click("habit_archive_open")
@@ -109,6 +110,24 @@ class CreateHabitNavigationTest {
         waitForTag("habit_create_open")
         compose.onNodeWithTag("habit_create_open").assertIsDisplayed()
         verifyPersistedHabit(name, start, archived = true)
+    }
+
+    private fun verifyPauseSurvivesActivityRecreation() {
+        click("habit_pause_open")
+        compose.mainClock.advanceTimeBy(500)
+        compose.onNodeWithText(text(R.string.habit_pause_confirmation), useUnmergedTree = true)
+            .assertIsDisplayed()
+        click("habit_pause_confirm")
+        waitForTag("habit_resume")
+        compose.activityRule.scenario.recreate()
+        compose.mainClock.advanceTimeBy(700)
+        waitForTag("habit_resume")
+        compose.onNodeWithTag("habit_cycle_progress")
+            .assertTextContains(text(R.string.habit_cycle_paused, 0, 60))
+        click("habit_resume")
+        waitForTag("habit_pause_open")
+        compose.onNodeWithTag("habit_cycle_progress")
+            .assertTextContains(text(R.string.habit_cycle_day, 1, 60))
     }
 
     // Navigation uses a paused clock to control Jive's continuous Home animation.
